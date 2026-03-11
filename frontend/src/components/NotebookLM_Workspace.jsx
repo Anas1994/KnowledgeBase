@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
 // ─── SVG Icon primitive ───────────────────────────────────────────────────
 const I = ({ d, size = 16, sw = 1.75, fill = "none", stroke = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -333,43 +335,115 @@ export default function InsightOS() {
   const processSource = useCallback((src) => {
     setSources(p => [...p, src]);
     logActivity("Source added", src.title, "#5DA9FF");
-    setTimeout(() => {
-      setSources(p => p.map(s => s.id === src.id
-        ? { ...s, status: "indexed", chunks: Math.floor(Math.random() * 150 + 40) }
-        : s));
-      logActivity("Source indexed", src.title, "#22C55E");
-      toast(`"${src.title.substring(0, 30)}..." indexed successfully`);
-    }, 2500);
-  }, [logActivity, toast]);
+  }, [logActivity]);
 
-  const handleFileUpload = useCallback((files) => {
+  const handleFileUpload = useCallback(async (files) => {
     if (!files || !files.length) return;
-    Array.from(files).forEach(file => {
-      const isValid = /\.(pdf|doc|docx|txt|ppt|pptx|mp3|mp4|wav)$/i.test(file.name);
-      if (!isValid) { toast(`"${file.name}" — unsupported file type`, "error"); return; }
-      const ext = file.name.split(".").pop().toLowerCase();
-      const typeMap = { pdf: "pdf", doc: "doc", docx: "doc", txt: "txt", ppt: "ppt", pptx: "ppt", mp3: "audio", mp4: "video", wav: "audio" };
-      const reader = new FileReader();
-      reader.onload = () => {
-        const newSrc = { id: Date.now() + Math.random(), title: file.name.replace(/\.[^.]+$/, ""), type: typeMap[ext] || "file", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), chunks: 0, size: `${(file.size / 1024 / 1024).toFixed(1)} MB`, status: "processing", content: `Content from ${file.name}` };
-        processSource(newSrc);
-      };
-      reader.readAsText(file);
-    });
     setModal(null);
     toast(`Uploading ${files.length} file${files.length > 1 ? "s" : ""}...`, "warn");
-  }, [processSource, toast]);
+    
+    for (const file of Array.from(files)) {
+      const isValid = /\.(pdf|txt|doc|docx)$/i.test(file.name);
+      if (!isValid) { toast(`"${file.name}" — unsupported file type`, "error"); continue; }
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('notebook_id', 'default');
+        
+        // Add temporary source to show processing state
+        const tempId = Date.now() + Math.random();
+        const tempSrc = {
+          id: tempId,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          type: file.name.split('.').pop().toLowerCase() === 'pdf' ? 'pdf' : 'txt',
+          date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          chunks: 0,
+          size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+          status: "processing"
+        };
+        setSources(p => [...p, tempSrc]);
+        
+        const response = await fetch(`${API_URL}/api/sources/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) throw new Error('Upload failed');
+        const data = await response.json();
+        
+        // Update source with real data
+        setSources(p => p.map(s => s.id === tempId ? {
+          ...s,
+          id: data.id,
+          title: data.title,
+          chunks: data.chunks,
+          status: data.status
+        } : s));
+        
+        logActivity("Source indexed", data.title, "#22C55E");
+        toast(`"${data.title}" indexed successfully`);
+      } catch (e) {
+        console.error('Upload error:', e);
+        toast(`Failed to upload ${file.name}`, "error");
+        setSources(p => p.filter(s => s.title !== file.name.replace(/\.[^.]+$/, "")));
+      }
+    }
+  }, [logActivity, toast]);
 
-  const handleURLAdd = useCallback(() => {
+  const handleURLAdd = useCallback(async () => {
     if (!urlInput.trim()) { toast("Please enter a URL", "error"); return; }
     try { new URL(urlInput.trim()); } catch { toast("Invalid URL format", "error"); return; }
+    
     const domain = new URL(urlInput.trim()).hostname.replace("www.", "");
-    const newSrc = { id: Date.now(), title: `Web: ${domain}`, type: "url", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), chunks: 0, size: "—", status: "processing", url: urlInput.trim(), content: `Content scraped from ${urlInput.trim()}` };
-    processSource(newSrc);
+    const tempId = Date.now();
+    const tempSrc = {
+      id: tempId,
+      title: `Web: ${domain}`,
+      type: "url",
+      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      chunks: 0,
+      size: "—",
+      status: "processing",
+      url: urlInput.trim()
+    };
+    
+    setSources(p => [...p, tempSrc]);
     setUrlInput("");
     setModal(null);
     toast("Fetching URL content...", "warn");
-  }, [urlInput, processSource, toast]);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/sources/url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `Web: ${domain}`,
+          type: 'url',
+          url: urlInput.trim(),
+          notebook_id: 'default'
+        })
+      });
+      
+      if (!response.ok) throw new Error('URL fetch failed');
+      const data = await response.json();
+      
+      setSources(p => p.map(s => s.id === tempId ? {
+        ...s,
+        id: data.id,
+        title: data.title,
+        chunks: data.chunks,
+        status: data.status
+      } : s));
+      
+      logActivity("Source indexed", data.title, "#22C55E");
+      toast(`URL indexed successfully`);
+    } catch (e) {
+      console.error('URL add error:', e);
+      toast("Failed to fetch URL content", "error");
+      setSources(p => p.filter(s => s.id !== tempId));
+    }
+  }, [urlInput, logActivity, toast]);
 
   const handleWebSearch = useCallback(async () => {
     if (!webSearchInput.trim()) return;
@@ -385,13 +459,54 @@ export default function InsightOS() {
     setWebSearching(false);
   }, [webSearchInput]);
 
-  const addWebResult = useCallback((result) => {
-    const newSrc = { id: Date.now(), title: result.title, type: "url", date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), chunks: 0, size: "—", status: "processing", url: result.url, content: result.snippet };
-    processSource(newSrc);
-    toast(`Added "${result.title.substring(0, 30)}..."`);
-  }, [processSource, toast]);
+  const addWebResult = useCallback(async (result) => {
+    const tempId = Date.now();
+    const tempSrc = {
+      id: tempId,
+      title: result.title,
+      type: "url",
+      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      chunks: 0,
+      size: "—",
+      status: "processing",
+      url: result.url
+    };
+    
+    setSources(p => [...p, tempSrc]);
+    toast(`Adding "${result.title.substring(0, 30)}..."`, "warn");
+    
+    try {
+      const response = await fetch(`${API_URL}/api/sources/url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: result.title,
+          type: 'url',
+          url: result.url,
+          notebook_id: 'default'
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to add web result');
+      const data = await response.json();
+      
+      setSources(p => p.map(s => s.id === tempId ? {
+        ...s,
+        id: data.id,
+        chunks: data.chunks,
+        status: data.status
+      } : s));
+      
+      logActivity("Source indexed", result.title, "#22C55E");
+      toast(`Added successfully`);
+    } catch (e) {
+      console.error('Web result add error:', e);
+      toast("Failed to add source", "error");
+      setSources(p => p.filter(s => s.id !== tempId));
+    }
+  }, [logActivity, toast]);
 
-  const deleteSource = useCallback((id, confirmed = false) => {
+  const deleteSource = useCallback(async (id, confirmed = false) => {
     if (!confirmed) {
       setConfirm({ msg: "Delete this source? This cannot be undone.", onYes: () => { deleteSource(id, true); setConfirm(null); }, onNo: () => setConfirm(null) });
       return;
@@ -400,6 +515,13 @@ export default function InsightOS() {
     setSources(p => p.filter(s => s.id !== id));
     logActivity("Source deleted", src?.title || "Source", "#EF4444");
     toast("Source deleted", "warn");
+    
+    // Also delete from backend
+    try {
+      await fetch(`${API_URL}/api/sources/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error('Delete error:', e);
+    }
   }, [sources, logActivity, toast]);
 
   // ── Chat ────────────────────────────────────────────────────────────────
@@ -408,18 +530,45 @@ export default function InsightOS() {
     if (!text.trim()) return;
     const indexed = sources.filter(s => s.status === "indexed");
     if (!indexed.length) { toast("Add and index at least one source first", "warn"); return; }
+    
     const userMsg = { id: Date.now(), role: "user", content: text, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
     setMessages(p => [...p, userMsg]);
     setChatInput("");
     setGenerating(true);
-    const delay = chatDepth === "deep" ? 3000 : chatDepth === "fast" ? 800 : 1800;
-    await new Promise(r => setTimeout(r, delay));
-    const { content, citations } = genAIResponse(text, sources);
-    const aiMsg = { id: Date.now() + 1, role: "ai", content, citations, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
-    setMessages(p => [...p, aiMsg]);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          notebook_id: 'default'
+        })
+      });
+      
+      if (!response.ok) throw new Error('Chat failed');
+      const data = await response.json();
+      
+      const aiMsg = {
+        id: Date.now() + 1,
+        role: "ai",
+        content: data.response,
+        citations: data.citations || [],
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        pinned: false
+      };
+      setMessages(p => [...p, aiMsg]);
+      logActivity("AI query answered", text.substring(0, 40), "#6D5EF7");
+    } catch (e) {
+      console.error('Chat error:', e);
+      // Fallback to local response
+      const { content, citations } = genAIResponse(text, sources);
+      const aiMsg = { id: Date.now() + 1, role: "ai", content, citations, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      setMessages(p => [...p, aiMsg]);
+    }
+    
     setGenerating(false);
-    logActivity("AI query answered", text.substring(0, 40), "#6D5EF7");
-  }, [chatInput, sources, chatDepth, logActivity, toast]);
+  }, [chatInput, sources, logActivity, toast]);
 
   const clearChat = useCallback(() => {
     setConfirm({ msg: "Clear all chat history? This cannot be undone.", onYes: () => { setMessages([]); setConfirm(null); toast("Chat cleared", "warn"); }, onNo: () => setConfirm(null) });
@@ -461,24 +610,130 @@ export default function InsightOS() {
   const generateOutput = useCallback(async (tool) => {
     const indexed = sources.filter(s => s.status === "indexed");
     if (!indexed.length) { toast("Index at least one source first", "warn"); return; }
+    
     setGenTool(tool.id);
-    await new Promise(r => setTimeout(r, 2500));
-    const content = genStudioContent(tool.id, notebookTitle, sources);
-    const newOut = { id: Date.now(), type: tool.id, title: `${tool.label} — ${notebookTitle}`, created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }), size: `${(Math.random() * 9 + 1).toFixed(1)} ${tool.id === "audio" ? "MB" : "KB"}`, content, notebookId: "nb1" };
-    setOutputs(p => [newOut, ...p]);
-    setGenTool(null);
-    logActivity(`${tool.label} generated`, notebookTitle, tool.color);
-    toast(`${tool.label} generated successfully!`);
-    setModalData(newOut); setModal("output");
+    toast(`Generating ${tool.label} with AI... This may take a moment.`, "warn");
+    
+    try {
+      const response = await fetch(`${API_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          output_type: tool.id,
+          notebook_id: 'default',
+          title: `${tool.label} — ${notebookTitle}`
+        })
+      });
+      
+      if (!response.ok) throw new Error('Generation failed');
+      const data = await response.json();
+      
+      const newOut = {
+        id: data.id,
+        type: data.type,
+        title: data.title,
+        content: data.content,
+        slides_data: data.slides_data,
+        created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        size: `${(data.content?.length / 1024).toFixed(1)} KB`,
+        notebookId: "nb1"
+      };
+      
+      setOutputs(p => [newOut, ...p]);
+      setGenTool(null);
+      logActivity(`${tool.label} generated`, notebookTitle, tool.color);
+      toast(`${tool.label} generated successfully!`);
+      setModalData(newOut);
+      setModal("output");
+    } catch (e) {
+      console.error('Generation error:', e);
+      toast(`Failed to generate ${tool.label}. Please try again.`, "error");
+      setGenTool(null);
+    }
   }, [sources, notebookTitle, logActivity, toast]);
 
   const deleteOutput = useCallback((id) => {
     setConfirm({ msg: "Delete this output?", onYes: () => { setOutputs(p => p.filter(o => o.id !== id)); setConfirm(null); toast("Output deleted", "warn"); }, onNo: () => setConfirm(null) });
   }, [toast]);
 
-  const downloadOutput = useCallback((out) => {
-    // All generated content is text-based (scripts, summaries, etc.)
-    // Export as .txt to ensure files can be opened properly
+  // Load pptxgenjs dynamically from CDN
+  const loadPptxGen = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (window.PptxGenJS) {
+        resolve(window.PptxGenJS);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+      script.onload = () => resolve(window.PptxGenJS);
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }, []);
+
+  const downloadOutput = useCallback(async (out) => {
+    // For slides, generate actual PPTX file
+    if (out.type === "slides" && out.slides_data && out.slides_data.length > 0) {
+      try {
+        toast("Preparing PowerPoint file...", "warn");
+        const PptxGenJS = await loadPptxGen();
+        const pptx = new PptxGenJS();
+        pptx.author = 'InsightOS';
+        pptx.title = out.title;
+        pptx.subject = 'AI-Generated Presentation';
+        
+        out.slides_data.forEach((slideData, index) => {
+          const slide = pptx.addSlide();
+          
+          // Title slide styling
+          if (index === 0) {
+            slide.addText(slideData.title || out.title, {
+              x: 0.5, y: 2, w: 9, h: 1.5,
+              fontSize: 36, bold: true, color: '363636',
+              align: 'center', valign: 'middle'
+            });
+            if (slideData.bullets && slideData.bullets.length > 0) {
+              slide.addText(slideData.bullets[0], {
+                x: 0.5, y: 3.5, w: 9, h: 0.5,
+                fontSize: 18, color: '666666',
+                align: 'center'
+              });
+            }
+          } else {
+            // Regular slides
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.5, y: 0.3, w: 9, h: 0.8,
+              fontSize: 28, bold: true, color: '363636'
+            });
+            
+            // Bullet points
+            if (slideData.bullets && slideData.bullets.length > 0) {
+              const bulletText = slideData.bullets.map(b => ({ text: b, options: { bullet: true } }));
+              slide.addText(bulletText, {
+                x: 0.5, y: 1.3, w: 9, h: 3.5,
+                fontSize: 18, color: '444444',
+                valign: 'top', paraSpaceAfter: 8
+              });
+            }
+            
+            // Speaker notes
+            if (slideData.notes) {
+              slide.addNotes(slideData.notes);
+            }
+          }
+        });
+        
+        // Download the PPTX
+        await pptx.writeFile({ fileName: `${out.title.replace(/[<>:"/\\|?*]/g, "_")}.pptx` });
+        toast("PowerPoint downloaded!");
+        return;
+      } catch (e) {
+        console.error('PPTX generation error:', e);
+        toast("Failed to generate PPTX, downloading as text", "warn");
+      }
+    }
+    
+    // For all other types, download as text
     const blob = new Blob([out.content || ""], { type: "text/plain;charset=utf-8" });
     const cleanTitle = out.title.replace(/[<>:"/\\|?*]/g, "_");
     const a = document.createElement("a"); 
@@ -487,7 +742,7 @@ export default function InsightOS() {
     a.click();
     URL.revokeObjectURL(a.href);
     toast("Download started");
-  }, [toast]);
+  }, [toast, loadPptxGen]);
 
   // ── Notes ────────────────────────────────────────────────────────────────
   const saveNote = useCallback(() => {
