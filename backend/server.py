@@ -13,8 +13,10 @@ import httpx
 from bs4 import BeautifulSoup
 import PyPDF2
 import io
+import base64
 from docx import Document as DocxDocument
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.openai.image_generation import OpenAIImageGeneration
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -167,6 +169,67 @@ async def generate_with_ai(prompt: str, system_message: str = "You are an expert
     except Exception as e:
         logger.error(f"AI generation error: {e}")
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+
+async def generate_slide_image(slide_title: str, slide_content: str, layout_type: str, theme: str) -> Optional[str]:
+    """Generate a professional diagram/image for a slide using AI"""
+    try:
+        # Create a detailed prompt for professional business diagrams
+        if layout_type == "timeline":
+            style = "professional timeline infographic with numbered steps, clean modern design, business presentation style"
+        elif layout_type == "two-column" or layout_type == "comparison":
+            style = "professional comparison diagram, side-by-side layout, clean icons, business infographic style"
+        elif layout_type == "image-left" or layout_type == "image-right":
+            style = "professional business diagram with icons and visual elements, clean modern infographic"
+        elif "ecosystem" in slide_content.lower() or "platform" in slide_content.lower():
+            style = "hub-and-spoke diagram showing connected system components, professional business architecture diagram"
+        elif "journey" in slide_content.lower() or "flow" in slide_content.lower() or "process" in slide_content.lower():
+            style = "professional process flow diagram with numbered steps and arrows, clean business style"
+        else:
+            style = "professional business infographic with icons and visual hierarchy, clean modern design"
+        
+        # Theme-specific colors
+        theme_colors = {
+            'tech': 'blue and white color scheme',
+            'smart_home': 'green and teal color scheme',
+            'corporate': 'indigo and purple color scheme',
+            'finance': 'teal and cyan color scheme',
+            'health': 'pink and coral color scheme',
+            'education': 'amber and orange color scheme'
+        }
+        color_scheme = theme_colors.get(theme, 'professional blue color scheme')
+        
+        prompt = f"""Create a {style} for a business presentation slide.
+
+Title: {slide_title}
+Key concepts: {slide_content[:300]}
+
+Style requirements:
+- {color_scheme}
+- Clean, minimal design suitable for PowerPoint
+- Professional corporate presentation quality
+- Clear visual hierarchy
+- No text labels (will be added separately)
+- White or light background
+- Modern flat design with subtle shadows
+- Abstract icons representing concepts"""
+
+        logger.info(f"Generating image for slide: {slide_title}")
+        
+        image_gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
+        images = await image_gen.generate_images(
+            prompt=prompt,
+            model="gpt-image-1",
+            number_of_images=1
+        )
+        
+        if images and len(images) > 0:
+            image_base64 = base64.b64encode(images[0]).decode('utf-8')
+            logger.info(f"Successfully generated image for: {slide_title}")
+            return image_base64
+        return None
+    except Exception as e:
+        logger.error(f"Image generation error for '{slide_title}': {e}")
+        return None
 
 # ─── ROUTES ─────────────────────────────────────────────────────────────────
 
@@ -451,6 +514,32 @@ Only output the JSON array, no other text."""
     else:
         theme = 'corporate'
     
+    # Generate images for key slides (skip title slide, generate for selected content slides)
+    logger.info(f"Starting image generation for {len(slides_data)} slides...")
+    for i, slide in enumerate(slides_data):
+        # Generate images for slides 2-5 (key content slides) and any with special layouts
+        layout = slide.get('layout', 'bullets')
+        should_generate = (
+            i > 0 and i < 5  # Slides 2-5
+            or layout in ['timeline', 'image-left', 'image-right', 'two-column', 'comparison']
+            or any(kw in slide.get('title', '').lower() for kw in ['ecosystem', 'platform', 'journey', 'flow', 'architecture', 'solution'])
+        )
+        
+        if should_generate:
+            try:
+                slide_content = ' '.join(slide.get('bullets', []))
+                image_base64 = await generate_slide_image(
+                    slide.get('title', ''),
+                    slide_content,
+                    layout,
+                    theme
+                )
+                if image_base64:
+                    slide['imageBase64'] = image_base64
+                    logger.info(f"Added image to slide {i+1}: {slide.get('title')}")
+            except Exception as e:
+                logger.error(f"Failed to generate image for slide {i+1}: {e}")
+    
     # Create text version for preview
     text_content = f"📊 PRESENTATION: {title}\n\nSources: {', '.join(sources)}\nTheme: {theme}\n\n"
     for slide in slides_data:
@@ -461,7 +550,9 @@ Only output the JSON array, no other text."""
             text_content += f"• {bullet}\n"
         if slide.get('highlight'):
             text_content += f"💡 Highlight: {slide.get('highlight')}\n"
-        text_content += f"🖼️ Image: {slide.get('imageKeyword', 'business')}\n"
+        text_content += f"🖼️ Image: {slide.get('imageKeyword', 'business')}"
+        if slide.get('imageBase64'):
+            text_content += " ✅ Generated"
         text_content += f"\n📝 Notes: {slide.get('notes', '')}\n"
     
     return GenerateResponse(

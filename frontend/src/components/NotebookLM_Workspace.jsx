@@ -1025,27 +1025,41 @@ export default function InsightOS() {
               fontFace: 'Arial'
             });
             
-            // Image placeholder with gradient
+            // Image area
             const imgX = isLeft ? 0.4 : 5.2;
-            slide.addShape('roundRect', {
-              x: imgX, y: 1.3, w: 4.4, h: 3.5,
-              fill: { color: theme.light },
-              line: { color: theme.secondary, width: 2 }
-            });
             
-            // Icon in center of image area
-            const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
-            slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'rect', {
-              x: imgX + 1.8, y: 2.4, w: 0.8, h: 0.8,
-              fill: { color: theme.primary, transparency: 30 }
-            });
-            
-            // Image keyword label
-            slide.addText(`📷 ${slideData.imageKeyword || 'Visual'}`, {
-              x: imgX, y: 4.5, w: 4.4, h: 0.3,
-              fontSize: 10, color: theme.secondary, italic: true,
-              fontFace: 'Arial', align: 'center'
-            });
+            // If we have an AI-generated image, use it
+            if (slideData.imageBase64) {
+              try {
+                slide.addImage({
+                  data: `data:image/png;base64,${slideData.imageBase64}`,
+                  x: imgX, y: 1.3, w: 4.4, h: 3.5,
+                  rounding: true
+                });
+              } catch (imgErr) {
+                console.error('Failed to add image:', imgErr);
+                // Fallback to placeholder
+                slide.addShape('roundRect', {
+                  x: imgX, y: 1.3, w: 4.4, h: 3.5,
+                  fill: { color: theme.light },
+                  line: { color: theme.secondary, width: 2 }
+                });
+              }
+            } else {
+              // Placeholder with gradient
+              slide.addShape('roundRect', {
+                x: imgX, y: 1.3, w: 4.4, h: 3.5,
+                fill: { color: theme.light },
+                line: { color: theme.secondary, width: 2 }
+              });
+              
+              // Icon in center of placeholder
+              const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
+              slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'rect', {
+                x: imgX + 1.8, y: 2.4, w: 0.8, h: 0.8,
+                fill: { color: theme.primary, transparency: 30 }
+              });
+            }
             
             // Content on opposite side
             const contentX = isLeft ? 5.2 : 0.4;
@@ -1097,7 +1111,7 @@ export default function InsightOS() {
             }
             
           } else {
-            // === DEFAULT BULLETS LAYOUT ===
+            // === DEFAULT BULLETS LAYOUT (with optional image) ===
             // Title with accent bar
             slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
             slide.addText(slideData.title || `Slide ${index + 1}`, {
@@ -1113,29 +1127,68 @@ export default function InsightOS() {
               fill: { color: theme.secondary, transparency: 50 }
             });
             
-            // Main content card
-            slide.addShape('roundRect', {
-              x: 0.3, y: 1.2, w: 9.4, h: 3.6,
-              fill: { color: 'FFFFFF' },
-              shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
-            });
-            
-            // Bullet points with custom styling
-            if (slideData.bullets && slideData.bullets.length > 0) {
-              const bulletItems = slideData.bullets.map((b, i) => ({
-                text: b + '\n',
-                options: {
-                  bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
-                  paraSpaceAfter: 16,
-                  indentLevel: 0
-                }
-              }));
+            // If we have an AI-generated image, use split layout
+            if (slideData.imageBase64) {
+              // Image on the right side
+              try {
+                slide.addImage({
+                  data: `data:image/png;base64,${slideData.imageBase64}`,
+                  x: 5.3, y: 1.2, w: 4.4, h: 3.6,
+                  rounding: true
+                });
+              } catch (imgErr) {
+                console.error('Failed to add image:', imgErr);
+              }
               
-              slide.addText(bulletItems, {
-                x: 0.6, y: 1.4, w: 8.8, h: 3.2,
-                fontSize: 18, color: '374151',
-                fontFace: 'Arial', valign: 'top'
+              // Content card on left
+              slide.addShape('roundRect', {
+                x: 0.3, y: 1.2, w: 4.8, h: 3.6,
+                fill: { color: 'FFFFFF' },
+                shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
               });
+              
+              // Bullet points
+              if (slideData.bullets && slideData.bullets.length > 0) {
+                const bulletItems = slideData.bullets.map((b, i) => ({
+                  text: b + '\n',
+                  options: {
+                    bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
+                    paraSpaceAfter: 14,
+                    indentLevel: 0
+                  }
+                }));
+                
+                slide.addText(bulletItems, {
+                  x: 0.5, y: 1.4, w: 4.4, h: 3.2,
+                  fontSize: 15, color: '374151',
+                  fontFace: 'Arial', valign: 'top'
+                });
+              }
+            } else {
+              // Standard full-width layout (no image)
+              slide.addShape('roundRect', {
+                x: 0.3, y: 1.2, w: 9.4, h: 3.6,
+                fill: { color: 'FFFFFF' },
+                shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
+              });
+              
+              // Bullet points with custom styling
+              if (slideData.bullets && slideData.bullets.length > 0) {
+                const bulletItems = slideData.bullets.map((b, i) => ({
+                  text: b + '\n',
+                  options: {
+                    bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
+                    paraSpaceAfter: 16,
+                    indentLevel: 0
+                  }
+                }));
+                
+                slide.addText(bulletItems, {
+                  x: 0.6, y: 1.4, w: 8.8, h: 3.2,
+                  fontSize: 18, color: '374151',
+                  fontFace: 'Arial', valign: 'top'
+                });
+              }
             }
             
             // Highlight box if present

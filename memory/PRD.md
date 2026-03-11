@@ -4,53 +4,49 @@
 Build a NotebookLM-like workspace app that:
 - Runs AI on uploaded documents as sources
 - Correlates data from multiple sources
-- Generates formal PPT files with fancy layouts, themes, icons
+- Generates formal PPT files with AI-generated diagrams, flowcharts, and visuals
 - Uses GPT-5.1 via Emergent LLM key
 
 ## Architecture
 
 ### Backend (FastAPI)
 - **Document Processing**: PDF (PyPDF2), DOCX (python-docx), URL scraping (BeautifulSoup)
-- **AI Integration**: GPT-5.1 via emergentintegrations library
+- **AI Text Generation**: GPT-5.1 via emergentintegrations library
+- **AI Image Generation**: GPT Image 1 via emergentintegrations for diagrams and visuals
 - **Database**: MongoDB for source and output storage
-- **Smart Theme Detection**: Analyzes content keywords to select appropriate theme
+
+### Image Generation for Slides
+For each key slide, AI generates professional diagrams based on:
+- **Slide title and content** → Determines diagram type
+- **Layout type** → Selects appropriate visual style:
+  - Timeline → Timeline infographic with numbered steps
+  - Two-column → Comparison diagram
+  - Image-left/right → Business diagram with icons
+  - Keywords like "ecosystem", "platform", "journey" → Hub-and-spoke or flow diagrams
+- **Theme colors** → Applies consistent color scheme
 
 ### Frontend (React + pptxgenjs)
-- **Professional PPTX Generation** with:
-  - 6 theme presets (tech, smart_home, corporate, finance, health, education)
-  - Master slides with gradients, shapes, and decorations
-  - Multiple layouts: title, bullets, two-column, timeline, image-left/right, quote
-  - Card backgrounds with shadows
-  - Icon placeholders
-  - Numbered bullets with theme colors
-  - Slide numbers and accent bars
+- **AI-Generated Images** embedded directly in PPTX slides
+- **Professional layouts** with images positioned contextually
+- **6 theme presets** auto-selected based on content analysis
 
 ## What's Been Implemented (Jan 2026)
-- [x] PDF and DOCX text extraction (fixed ZIP/binary detection)
-- [x] URL scraping and indexing
-- [x] AI-powered chat with source citations
-- [x] AI generates varied slide layouts (timeline, two-column, image layouts)
-- [x] Professional PPTX with themes, shapes, cards, icons
-- [x] Source and output persistence in MongoDB
+- [x] PDF and DOCX text extraction
+- [x] AI-powered slide content generation from actual sources
+- [x] AI-generated professional diagrams for key slides (GPT Image 1)
+- [x] Images embedded in PPTX via base64
+- [x] Multiple slide layouts (title, bullets, timeline, two-column, image layouts)
+- [x] Themed presentations with consistent color schemes
+- [x] Source and output persistence
 
-## Slide Layout Types
-1. **Title** - Large centered title with decorative elements
-2. **Bullets** - Standard numbered list with icon and highlight box
-3. **Two-Column** - Split content in card backgrounds
-4. **Timeline** - Horizontal timeline with phase markers
-5. **Image-Left/Right** - Content with image placeholder
-6. **Quote** - Large quote mark with emphasized text
-
-## Theme Presets
-- **Tech** (Blue) - Software, development, digital content
-- **Smart Home** (Emerald) - Home automation, IoT, devices
-- **Corporate** (Indigo) - Business, general presentations
-- **Finance** (Teal) - Money, budgets, revenue
-- **Health** (Pink) - Medical, patient care
-- **Education** (Amber) - Learning, training, schools
+## Image Generation Details
+- Generates ~8 images per presentation for key content slides
+- Each image takes ~15-20 seconds to generate
+- Total generation time: ~3-4 minutes for full presentation with images
+- Images are professional business diagrams, not photos
 
 ## Next Tasks
-1. Add actual image search integration (Unsplash/Pexels)
-2. Add chart generation for data
+1. Add image caching to reduce regeneration time
+2. Add chart generation for data slides
 3. Support more file types (XLSX for tables)
 4. User authentication
