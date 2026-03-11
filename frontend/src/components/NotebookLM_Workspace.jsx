@@ -721,15 +721,71 @@ export default function InsightOS() {
       setOutputs(p => [newOut, ...p]);
       setGenTool(null);
       logActivity(`${tool.label} generated`, notebookTitle, tool.color);
-      toast(`${tool.label} generated successfully!`);
+      toast(`${tool.label} generated! Generating images in background...`);
       setModalData(newOut);
       setModal("output");
+      
+      // Generate images asynchronously for key slides (runs in background)
+      if (tool.id === 'slides' && newOut.slides_data) {
+        generateImagesAsync(newOut);
+      }
     } catch (e) {
       console.error('Generation error:', e);
       toast(`Failed to generate ${tool.label}. Please try again.`, "error");
       setGenTool(null);
     }
   }, [sources, notebookTitle, logActivity, toast]);
+
+  // Generate images asynchronously for slides
+  const generateImagesAsync = useCallback(async (output) => {
+    if (!output.slides_data) return;
+    
+    const slidesToProcess = output.slides_data.filter((s, i) => 
+      i >= 1 && i <= 4 && !s.imageBase64 // Slides 2-5 without images
+    );
+    
+    if (slidesToProcess.length === 0) return;
+    
+    toast(`Generating ${slidesToProcess.length} images in background...`, "warn");
+    
+    let imagesGenerated = 0;
+    for (const slide of slidesToProcess) {
+      try {
+        const response = await fetch(`${API_URL}/api/generate-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slide_title: slide.title,
+            slide_content: (slide.bullets || []).join(' '),
+            layout: slide.layout || 'bullets',
+            theme: output.theme || 'corporate'
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.imageBase64) {
+            // Update the slide with the image
+            slide.imageBase64 = result.imageBase64;
+            imagesGenerated++;
+            
+            // Update outputs state with new image
+            setOutputs(prev => prev.map(o => 
+              o.id === output.id 
+                ? { ...o, slides_data: [...output.slides_data] }
+                : o
+            ));
+          }
+        }
+      } catch (e) {
+        console.error('Image generation failed for slide:', slide.title, e);
+      }
+    }
+    
+    if (imagesGenerated > 0) {
+      toast(`${imagesGenerated} images generated! Click Export to download.`);
+    }
+  }, [toast]);
 
   const deleteOutput = useCallback(async (id) => {
     setConfirm({ 

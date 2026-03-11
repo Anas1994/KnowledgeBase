@@ -514,31 +514,10 @@ Only output the JSON array, no other text."""
     else:
         theme = 'corporate'
     
-    # Generate images for key slides (skip title slide, generate for selected content slides)
-    logger.info(f"Starting image generation for {len(slides_data)} slides...")
-    for i, slide in enumerate(slides_data):
-        # Generate images for slides 2-5 (key content slides) and any with special layouts
-        layout = slide.get('layout', 'bullets')
-        should_generate = (
-            i > 0 and i < 5  # Slides 2-5
-            or layout in ['timeline', 'image-left', 'image-right', 'two-column', 'comparison']
-            or any(kw in slide.get('title', '').lower() for kw in ['ecosystem', 'platform', 'journey', 'flow', 'architecture', 'solution'])
-        )
-        
-        if should_generate:
-            try:
-                slide_content = ' '.join(slide.get('bullets', []))
-                image_base64 = await generate_slide_image(
-                    slide.get('title', ''),
-                    slide_content,
-                    layout,
-                    theme
-                )
-                if image_base64:
-                    slide['imageBase64'] = image_base64
-                    logger.info(f"Added image to slide {i+1}: {slide.get('title')}")
-            except Exception as e:
-                logger.error(f"Failed to generate image for slide {i+1}: {e}")
+    # NOTE: Image generation is disabled to avoid gateway timeout (60s limit)
+    # The presentation will be generated with placeholder icons instead
+    # To enable images, run locally or increase gateway timeout
+    logger.info(f"Slides generated: {len(slides_data)} (images disabled due to timeout constraints)")
     
     # Create text version for preview
     text_content = f"📊 PRESENTATION: {title}\n\nSources: {', '.join(sources)}\nTheme: {theme}\n\n"
@@ -849,6 +828,31 @@ async def delete_output(output_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Output not found")
     return {"status": "deleted"}
+
+# ─── SINGLE IMAGE GENERATION ────────────────────────────────────────────────
+
+class GenerateImageRequest(BaseModel):
+    slide_title: str
+    slide_content: str
+    layout: str = "bullets"
+    theme: str = "corporate"
+
+@api_router.post("/generate-image")
+async def generate_single_image(request: GenerateImageRequest):
+    """Generate a single image for a slide (for async image generation)"""
+    try:
+        image_base64 = await generate_slide_image(
+            request.slide_title,
+            request.slide_content,
+            request.layout,
+            request.theme
+        )
+        if image_base64:
+            return {"success": True, "imageBase64": image_base64}
+        return {"success": False, "error": "Image generation failed"}
+    except Exception as e:
+        logger.error(f"Single image generation error: {e}")
+        return {"success": False, "error": str(e)}
 
 # ─── CHAT WITH SOURCES ──────────────────────────────────────────────────────
 
