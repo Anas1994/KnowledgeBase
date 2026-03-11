@@ -4,71 +4,53 @@
 Build a NotebookLM-like workspace app that:
 - Runs AI on uploaded documents as sources
 - Correlates data from multiple sources
-- Generates formal PPT files based on uploaded sources
+- Generates formal PPT files with fancy layouts, themes, icons
 - Uses GPT-5.1 via Emergent LLM key
 
 ## Architecture
 
 ### Backend (FastAPI)
-- **Document Processing**: PDF text extraction via PyPDF2, URL scraping via BeautifulSoup
+- **Document Processing**: PDF (PyPDF2), DOCX (python-docx), URL scraping (BeautifulSoup)
 - **AI Integration**: GPT-5.1 via emergentintegrations library
 - **Database**: MongoDB for source and output storage
-- **Endpoints**:
-  - `POST /api/sources/upload` - Upload and process documents
-  - `POST /api/sources/url` - Add URL sources
-  - `GET /api/sources` - List all sources
-  - `POST /api/chat` - AI chat with sources
-  - `POST /api/generate` - Generate outputs (slides, reports, etc.)
-  - `POST /api/outputs` - Save generated outputs
-  - `GET /api/outputs` - List saved outputs
+- **Smart Theme Detection**: Analyzes content keywords to select appropriate theme
 
-### Frontend (React)
-- **pptxgenjs**: Loaded from CDN for PPTX generation
-- **Real-time source processing**: Shows indexing status
-- **Studio tools**: Audio, Slides, Video Script, Mind Map, Report, Flashcards, Quiz, Infographic, Data Table
-- **Persistence**: Sources and outputs loaded from backend on mount
+### Frontend (React + pptxgenjs)
+- **Professional PPTX Generation** with:
+  - 6 theme presets (tech, smart_home, corporate, finance, health, education)
+  - Master slides with gradients, shapes, and decorations
+  - Multiple layouts: title, bullets, two-column, timeline, image-left/right, quote
+  - Card backgrounds with shadows
+  - Icon placeholders
+  - Numbered bullets with theme colors
+  - Slide numbers and accent bars
 
 ## What's Been Implemented (Jan 2026)
-- [x] File upload with PDF/TXT extraction
+- [x] PDF and DOCX text extraction (fixed ZIP/binary detection)
 - [x] URL scraping and indexing
 - [x] AI-powered chat with source citations
-- [x] AI generation for multiple output types using actual uploaded sources
-- [x] Real PPTX file generation with slides data
-- [x] Source management (add, delete, view)
-- [x] Output persistence in MongoDB
-- [x] Activity logging
+- [x] AI generates varied slide layouts (timeline, two-column, image layouts)
+- [x] Professional PPTX with themes, shapes, cards, icons
+- [x] Source and output persistence in MongoDB
 
-## User Personas
-1. **Researchers**: Upload papers, generate summaries and reports
-2. **Students**: Create flashcards and quizzes from study materials
-3. **Business Users**: Generate presentations from multiple documents
+## Slide Layout Types
+1. **Title** - Large centered title with decorative elements
+2. **Bullets** - Standard numbered list with icon and highlight box
+3. **Two-Column** - Split content in card backgrounds
+4. **Timeline** - Horizontal timeline with phase markers
+5. **Image-Left/Right** - Content with image placeholder
+6. **Quote** - Large quote mark with emphasized text
 
-## Core Requirements (Static)
-- Upload PDF/TXT files for indexing
-- Add URL sources
-- AI-powered Q&A about sources
-- Generate structured outputs from source content
-- Download actual PPTX files
-
-## Prioritized Backlog
-
-### P0 (Critical) - DONE
-- [x] Document upload and processing
-- [x] AI chat integration
-- [x] PPTX generation from real sources
-- [x] Output persistence
-
-### P1 (High)
-- [ ] Support for more file types (DOCX, XLSX)
-- [ ] Persistent notebooks (save/load multiple notebooks)
-- [ ] User authentication
-
-### P2 (Medium)
-- [ ] Audio podcast generation (TTS)
-- [ ] Collaborative editing
-- [ ] Export to PDF reports
+## Theme Presets
+- **Tech** (Blue) - Software, development, digital content
+- **Smart Home** (Emerald) - Home automation, IoT, devices
+- **Corporate** (Indigo) - Business, general presentations
+- **Finance** (Teal) - Money, budgets, revenue
+- **Health** (Pink) - Medical, patient care
+- **Education** (Amber) - Learning, training, schools
 
 ## Next Tasks
-1. Add DOCX file support
-2. Implement user authentication
-3. Add multiple notebook management
+1. Add actual image search integration (Unsplash/Pexels)
+2. Add chart generation for data
+3. Support more file types (XLSX for tables)
+4. User authentication

@@ -694,6 +694,7 @@ export default function InsightOS() {
         title: data.title,
         content: data.content,
         slides_data: data.slides_data,
+        theme: data.theme,
         created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         size: `${(data.content?.length / 1024).toFixed(1)} KB`,
         notebookId: "default"
@@ -763,61 +764,412 @@ export default function InsightOS() {
     });
   }, []);
 
+  // Theme configurations for professional presentations
+  const THEMES = {
+    tech: {
+      primary: '2563EB',      // Blue
+      secondary: '3B82F6',
+      accent: '60A5FA',
+      dark: '1E3A8A',
+      light: 'DBEAFE',
+      gradient: ['1E40AF', '3B82F6'],
+      bgColor: 'F0F9FF'
+    },
+    smart_home: {
+      primary: '059669',      // Emerald
+      secondary: '10B981',
+      accent: '34D399',
+      dark: '065F46',
+      light: 'D1FAE5',
+      gradient: ['065F46', '10B981'],
+      bgColor: 'ECFDF5'
+    },
+    corporate: {
+      primary: '4F46E5',      // Indigo
+      secondary: '6366F1',
+      accent: '818CF8',
+      dark: '312E81',
+      light: 'E0E7FF',
+      gradient: ['312E81', '6366F1'],
+      bgColor: 'F5F3FF'
+    },
+    finance: {
+      primary: '0D9488',      // Teal
+      secondary: '14B8A6',
+      accent: '2DD4BF',
+      dark: '115E59',
+      light: 'CCFBF1',
+      gradient: ['115E59', '14B8A6'],
+      bgColor: 'F0FDFA'
+    },
+    health: {
+      primary: 'EC4899',      // Pink
+      secondary: 'F472B6',
+      accent: 'F9A8D4',
+      dark: '9D174D',
+      light: 'FCE7F3',
+      gradient: ['9D174D', 'EC4899'],
+      bgColor: 'FDF2F8'
+    },
+    education: {
+      primary: 'F59E0B',      // Amber
+      secondary: 'FBBF24',
+      accent: 'FCD34D',
+      dark: 'B45309',
+      light: 'FEF3C7',
+      gradient: ['B45309', 'F59E0B'],
+      bgColor: 'FFFBEB'
+    }
+  };
+
+  // Icon SVG paths (simple geometric representations)
+  const ICON_SHAPES = {
+    home: { type: 'rect', w: 0.4, h: 0.35 },
+    briefcase: { type: 'rect', w: 0.4, h: 0.3 },
+    chart: { type: 'rect', w: 0.35, h: 0.35 },
+    users: { type: 'ellipse', w: 0.35, h: 0.35 },
+    cog: { type: 'ellipse', w: 0.35, h: 0.35 },
+    shield: { type: 'rect', w: 0.3, h: 0.4 },
+    cloud: { type: 'ellipse', w: 0.45, h: 0.3 },
+    mobile: { type: 'rect', w: 0.25, h: 0.4 },
+    check: { type: 'ellipse', w: 0.35, h: 0.35 },
+    lightbulb: { type: 'ellipse', w: 0.3, h: 0.4 },
+    rocket: { type: 'rect', w: 0.25, h: 0.45 },
+    target: { type: 'ellipse', w: 0.4, h: 0.4 },
+    clock: { type: 'ellipse', w: 0.35, h: 0.35 },
+    globe: { type: 'ellipse', w: 0.4, h: 0.4 },
+    lock: { type: 'rect', w: 0.3, h: 0.35 },
+    server: { type: 'rect', w: 0.35, h: 0.4 },
+    database: { type: 'ellipse', w: 0.35, h: 0.4 },
+    code: { type: 'rect', w: 0.45, h: 0.3 },
+    team: { type: 'ellipse', w: 0.4, h: 0.35 },
+    growth: { type: 'rect', w: 0.4, h: 0.4 }
+  };
+
   const downloadOutput = useCallback(async (out) => {
-    // For slides, generate actual PPTX file
+    // For slides, generate professional PPTX file
     if (out.type === "slides" && out.slides_data && out.slides_data.length > 0) {
       try {
-        toast("Preparing PowerPoint file...", "warn");
+        toast("Creating professional presentation...", "warn");
         const PptxGenJS = await loadPptxGen();
         const pptx = new PptxGenJS();
         pptx.author = 'InsightOS';
         pptx.title = out.title;
-        pptx.subject = 'AI-Generated Presentation';
+        pptx.subject = 'AI-Generated Professional Presentation';
         
+        // Get theme (default to corporate)
+        const themeName = out.theme || 'corporate';
+        const theme = THEMES[themeName] || THEMES.corporate;
+        
+        // Define master slide with theme
+        pptx.defineSlideMaster({
+          title: 'THEMED_SLIDE',
+          background: { color: theme.bgColor },
+          objects: [
+            // Top accent bar
+            { rect: { x: 0, y: 0, w: '100%', h: 0.15, fill: { color: theme.primary } } },
+            // Bottom accent line
+            { rect: { x: 0, y: 5.4, w: '100%', h: 0.1, fill: { color: theme.accent } } },
+            // Decorative corner shape
+            { rect: { x: 9.2, y: 0, w: 0.8, h: 0.8, fill: { color: theme.secondary, transparency: 70 } } }
+          ]
+        });
+        
+        // Title slide master
+        pptx.defineSlideMaster({
+          title: 'TITLE_SLIDE',
+          background: { color: theme.dark },
+          objects: [
+            // Large decorative circle
+            { 'ellipse': { x: 7, y: -1, w: 4, h: 4, fill: { color: theme.secondary, transparency: 80 } } },
+            { 'ellipse': { x: -1, y: 3, w: 3, h: 3, fill: { color: theme.accent, transparency: 85 } } },
+            // Bottom gradient bar
+            { rect: { x: 0, y: 5, w: '100%', h: 0.5, fill: { color: theme.primary } } }
+          ]
+        });
+
         out.slides_data.forEach((slideData, index) => {
-          const slide = pptx.addSlide();
+          const layout = slideData.layout || 'bullets';
+          const isTitle = index === 0 || layout === 'title';
           
-          // Title slide styling
-          if (index === 0) {
+          // Create slide with appropriate master
+          const slide = pptx.addSlide({ masterName: isTitle ? 'TITLE_SLIDE' : 'THEMED_SLIDE' });
+          
+          if (isTitle) {
+            // === TITLE SLIDE ===
+            // Main title
             slide.addText(slideData.title || out.title, {
-              x: 0.5, y: 2, w: 9, h: 1.5,
-              fontSize: 36, bold: true, color: '363636',
+              x: 0.5, y: 1.8, w: 9, h: 1.2,
+              fontSize: 44, bold: true, color: 'FFFFFF',
+              fontFace: 'Arial',
               align: 'center', valign: 'middle'
             });
-            if (slideData.bullets && slideData.bullets.length > 0) {
-              slide.addText(slideData.bullets[0], {
-                x: 0.5, y: 3.5, w: 9, h: 0.5,
-                fontSize: 18, color: '666666',
+            
+            // Subtitle
+            const subtitle = slideData.subtitle || slideData.bullets?.[0] || '';
+            if (subtitle) {
+              slide.addText(subtitle, {
+                x: 0.5, y: 3.2, w: 9, h: 0.6,
+                fontSize: 20, color: theme.light,
+                fontFace: 'Arial',
                 align: 'center'
               });
             }
-          } else {
-            // Regular slides
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.5, y: 0.3, w: 9, h: 0.8,
-              fontSize: 28, bold: true, color: '363636'
+            
+            // Decorative line under title
+            slide.addShape('rect', {
+              x: 3.5, y: 3, w: 3, h: 0.05,
+              fill: { color: theme.accent }
             });
             
-            // Bullet points
-            if (slideData.bullets && slideData.bullets.length > 0) {
-              const bulletText = slideData.bullets.map(b => ({ text: b, options: { bullet: true } }));
-              slide.addText(bulletText, {
-                x: 0.5, y: 1.3, w: 9, h: 3.5,
-                fontSize: 18, color: '444444',
-                valign: 'top', paraSpaceAfter: 8
+          } else if (layout === 'two-column' || layout === 'comparison') {
+            // === TWO COLUMN LAYOUT ===
+            // Title with accent bar
+            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.4, y: 0.35, w: 9, h: 0.7,
+              fontSize: 28, bold: true, color: theme.dark,
+              fontFace: 'Arial'
+            });
+            
+            // Split bullets into two columns
+            const bullets = slideData.bullets || [];
+            const midPoint = Math.ceil(bullets.length / 2);
+            const leftBullets = bullets.slice(0, midPoint);
+            const rightBullets = bullets.slice(midPoint);
+            
+            // Left column with card background
+            slide.addShape('roundRect', {
+              x: 0.3, y: 1.3, w: 4.4, h: 3.5,
+              fill: { color: 'FFFFFF' },
+              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+            });
+            
+            if (leftBullets.length > 0) {
+              slide.addText(leftBullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 12 } })), {
+                x: 0.5, y: 1.5, w: 4, h: 3,
+                fontSize: 16, color: '374151',
+                fontFace: 'Arial', valign: 'top'
               });
             }
             
-            // Speaker notes
-            if (slideData.notes) {
-              slide.addNotes(slideData.notes);
+            // Right column with card background
+            slide.addShape('roundRect', {
+              x: 5.3, y: 1.3, w: 4.4, h: 3.5,
+              fill: { color: 'FFFFFF' },
+              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+            });
+            
+            if (rightBullets.length > 0) {
+              slide.addText(rightBullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 12 } })), {
+                x: 5.5, y: 1.5, w: 4, h: 3,
+                fontSize: 16, color: '374151',
+                fontFace: 'Arial', valign: 'top'
+              });
             }
+            
+          } else if (layout === 'timeline') {
+            // === TIMELINE LAYOUT ===
+            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.4, y: 0.35, w: 9, h: 0.7,
+              fontSize: 28, bold: true, color: theme.dark,
+              fontFace: 'Arial'
+            });
+            
+            // Timeline line
+            slide.addShape('rect', { x: 0.5, y: 2.5, w: 9, h: 0.05, fill: { color: theme.secondary } });
+            
+            // Timeline items
+            const bullets = slideData.bullets || [];
+            const itemWidth = 9 / Math.max(bullets.length, 1);
+            bullets.forEach((bullet, i) => {
+              const xPos = 0.5 + (i * itemWidth) + (itemWidth / 2) - 0.8;
+              
+              // Circle marker
+              slide.addShape('ellipse', {
+                x: xPos + 0.65, y: 2.35, w: 0.3, h: 0.3,
+                fill: { color: theme.primary }
+              });
+              
+              // Card for content
+              slide.addShape('roundRect', {
+                x: xPos, y: 2.9, w: 1.6, h: 1.8,
+                fill: { color: 'FFFFFF' },
+                shadow: { type: 'outer', blur: 6, offset: 2, angle: 45, opacity: 0.12 }
+              });
+              
+              // Phase number
+              slide.addText(`${i + 1}`, {
+                x: xPos, y: 3, w: 1.6, h: 0.4,
+                fontSize: 20, bold: true, color: theme.primary,
+                fontFace: 'Arial', align: 'center'
+              });
+              
+              // Content
+              slide.addText(bullet, {
+                x: xPos + 0.1, y: 3.4, w: 1.4, h: 1.2,
+                fontSize: 11, color: '4B5563',
+                fontFace: 'Arial', align: 'center', valign: 'top'
+              });
+            });
+            
+          } else if (layout === 'image-left' || layout === 'image-right') {
+            // === IMAGE LAYOUT ===
+            const isLeft = layout === 'image-left';
+            
+            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.4, y: 0.35, w: 9, h: 0.7,
+              fontSize: 28, bold: true, color: theme.dark,
+              fontFace: 'Arial'
+            });
+            
+            // Image placeholder with gradient
+            const imgX = isLeft ? 0.4 : 5.2;
+            slide.addShape('roundRect', {
+              x: imgX, y: 1.3, w: 4.4, h: 3.5,
+              fill: { color: theme.light },
+              line: { color: theme.secondary, width: 2 }
+            });
+            
+            // Icon in center of image area
+            const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
+            slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'rect', {
+              x: imgX + 1.8, y: 2.4, w: 0.8, h: 0.8,
+              fill: { color: theme.primary, transparency: 30 }
+            });
+            
+            // Image keyword label
+            slide.addText(`📷 ${slideData.imageKeyword || 'Visual'}`, {
+              x: imgX, y: 4.5, w: 4.4, h: 0.3,
+              fontSize: 10, color: theme.secondary, italic: true,
+              fontFace: 'Arial', align: 'center'
+            });
+            
+            // Content on opposite side
+            const contentX = isLeft ? 5.2 : 0.4;
+            slide.addShape('roundRect', {
+              x: contentX, y: 1.3, w: 4.4, h: 3.5,
+              fill: { color: 'FFFFFF' },
+              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+            });
+            
+            if (slideData.bullets && slideData.bullets.length > 0) {
+              slide.addText(slideData.bullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 14 } })), {
+                x: contentX + 0.2, y: 1.5, w: 4, h: 3,
+                fontSize: 15, color: '374151',
+                fontFace: 'Arial', valign: 'top'
+              });
+            }
+            
+          } else if (layout === 'quote') {
+            // === QUOTE LAYOUT ===
+            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.4, y: 0.35, w: 9, h: 0.7,
+              fontSize: 28, bold: true, color: theme.dark,
+              fontFace: 'Arial'
+            });
+            
+            // Large quote mark
+            slide.addText('"', {
+              x: 0.5, y: 1.2, w: 1, h: 1,
+              fontSize: 80, color: theme.light,
+              fontFace: 'Georgia'
+            });
+            
+            // Quote content
+            const quoteText = slideData.highlight || slideData.bullets?.[0] || '';
+            slide.addText(quoteText, {
+              x: 1.5, y: 1.8, w: 7, h: 1.5,
+              fontSize: 24, italic: true, color: theme.dark,
+              fontFace: 'Georgia', align: 'center', valign: 'middle'
+            });
+            
+            // Additional bullets below
+            if (slideData.bullets && slideData.bullets.length > 1) {
+              slide.addText(slideData.bullets.slice(1).map(b => ({ text: '• ' + b + '\n', options: { paraSpaceAfter: 10 } })), {
+                x: 1, y: 3.5, w: 8, h: 1.5,
+                fontSize: 14, color: '6B7280',
+                fontFace: 'Arial', align: 'center'
+              });
+            }
+            
+          } else {
+            // === DEFAULT BULLETS LAYOUT ===
+            // Title with accent bar
+            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
+            slide.addText(slideData.title || `Slide ${index + 1}`, {
+              x: 0.4, y: 0.35, w: 8, h: 0.7,
+              fontSize: 28, bold: true, color: theme.dark,
+              fontFace: 'Arial'
+            });
+            
+            // Icon in top right
+            const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
+            slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'roundRect', {
+              x: 8.8, y: 0.25, w: 0.7, h: 0.7,
+              fill: { color: theme.secondary, transparency: 50 }
+            });
+            
+            // Main content card
+            slide.addShape('roundRect', {
+              x: 0.3, y: 1.2, w: 9.4, h: 3.6,
+              fill: { color: 'FFFFFF' },
+              shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
+            });
+            
+            // Bullet points with custom styling
+            if (slideData.bullets && slideData.bullets.length > 0) {
+              const bulletItems = slideData.bullets.map((b, i) => ({
+                text: b + '\n',
+                options: {
+                  bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
+                  paraSpaceAfter: 16,
+                  indentLevel: 0
+                }
+              }));
+              
+              slide.addText(bulletItems, {
+                x: 0.6, y: 1.4, w: 8.8, h: 3.2,
+                fontSize: 18, color: '374151',
+                fontFace: 'Arial', valign: 'top'
+              });
+            }
+            
+            // Highlight box if present
+            if (slideData.highlight) {
+              slide.addShape('roundRect', {
+                x: 0.5, y: 4.6, w: 9, h: 0.5,
+                fill: { color: theme.light }
+              });
+              slide.addText('💡 ' + slideData.highlight, {
+                x: 0.7, y: 4.65, w: 8.6, h: 0.4,
+                fontSize: 12, color: theme.dark, bold: true,
+                fontFace: 'Arial', valign: 'middle'
+              });
+            }
+          }
+          
+          // Add speaker notes
+          if (slideData.notes) {
+            slide.addNotes(slideData.notes);
+          }
+          
+          // Slide number (except title slide)
+          if (index > 0) {
+            slide.addText(`${index}`, {
+              x: 9.3, y: 5.15, w: 0.4, h: 0.25,
+              fontSize: 10, color: theme.secondary,
+              fontFace: 'Arial', align: 'center'
+            });
           }
         });
         
         // Download the PPTX
         await pptx.writeFile({ fileName: `${out.title.replace(/[<>:"/\\|?*]/g, "_")}.pptx` });
-        toast("PowerPoint downloaded!");
+        toast("Professional presentation downloaded!");
         return;
       } catch (e) {
         console.error('PPTX generation error:', e);

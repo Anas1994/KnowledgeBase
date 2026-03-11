@@ -81,6 +81,7 @@ class GenerateResponse(BaseModel):
     title: str
     content: str
     slides_data: Optional[List[dict]] = None  # For PPTX generation
+    theme: Optional[str] = None  # Theme for styling
 
 # ─── HELPER FUNCTIONS ───────────────────────────────────────────────────────
 
@@ -369,7 +370,7 @@ async def generate_output(request: GenerateRequest):
         raise HTTPException(status_code=400, detail=f"Unknown output type: {request.output_type}")
 
 async def generate_slides(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate PowerPoint slide content using AI"""
+    """Generate PowerPoint slide content using AI with rich formatting"""
     
     prompt = f"""Based on the following research content from {len(sources)} sources, create a professional PowerPoint presentation.
 
@@ -382,21 +383,30 @@ Create a presentation with exactly 8-10 slides. For each slide, provide:
 1. A clear, concise title (max 8 words)
 2. 3-5 bullet points with key insights (each bullet max 15 words)
 3. Speaker notes (2-3 sentences explaining the slide)
+4. Layout type: "title", "bullets", "two-column", "image-left", "image-right", "quote", "timeline", "comparison"
+5. An image search keyword (1-3 words) that represents this slide's content visually
+6. An icon name from this list that best represents the slide: home, briefcase, chart, users, cog, shield, cloud, mobile, check, lightbulb, rocket, target, clock, globe, lock, server, database, code, team, growth
 
-Format your response as JSON array with this structure:
+Format your response as JSON array:
 [
   {{
     "slideNumber": 1,
     "title": "Slide Title Here",
+    "subtitle": "Optional subtitle for title slides",
     "bullets": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
-    "notes": "Speaker notes explaining this slide content."
+    "notes": "Speaker notes explaining this slide content.",
+    "layout": "title",
+    "imageKeyword": "technology innovation",
+    "icon": "rocket",
+    "highlight": "Key phrase to emphasize"
   }}
 ]
 
-Start with a title slide, include an executive summary, cover main topics, and end with conclusions/recommendations.
+Slide 1 should be "title" layout with subtitle.
+Include variety of layouts: use "two-column" for comparisons, "timeline" for phases, "image-left/right" for key concepts.
 Only output the JSON array, no other text."""
 
-    response = await generate_with_ai(prompt, "You are an expert presentation designer. Create clear, professional slide content.")
+    response = await generate_with_ai(prompt, "You are an expert presentation designer. Create visually engaging, professional slide content with varied layouts.")
     
     # Parse JSON response
     try:
@@ -408,19 +418,50 @@ Only output the JSON array, no other text."""
             if response_clean.startswith("json"):
                 response_clean = response_clean[4:]
         slides_data = json.loads(response_clean)
-    except:
+        
+        # Ensure all slides have required fields with defaults
+        for slide in slides_data:
+            slide.setdefault('layout', 'bullets')
+            slide.setdefault('imageKeyword', 'business')
+            slide.setdefault('icon', 'briefcase')
+            slide.setdefault('subtitle', '')
+            slide.setdefault('highlight', '')
+            slide.setdefault('bullets', [])
+            slide.setdefault('notes', '')
+    except Exception as e:
+        logger.error(f"JSON parse error: {e}")
         # Fallback if JSON parsing fails
         slides_data = [
-            {"slideNumber": 1, "title": title, "bullets": ["AI-generated presentation", f"Based on {len(sources)} sources"], "notes": "Title slide"},
-            {"slideNumber": 2, "title": "Key Findings", "bullets": ["Analysis in progress", "See full content below"], "notes": response[:500]}
+            {"slideNumber": 1, "title": title, "subtitle": f"Based on {len(sources)} sources", "bullets": [], "notes": "Title slide", "layout": "title", "imageKeyword": "presentation", "icon": "briefcase"},
+            {"slideNumber": 2, "title": "Key Findings", "bullets": ["Analysis in progress", "See full content below"], "notes": response[:500], "layout": "bullets", "imageKeyword": "analysis", "icon": "chart"}
         ]
     
+    # Determine theme based on content keywords
+    content_lower = content.lower()
+    if any(word in content_lower for word in ['tech', 'software', 'code', 'development', 'app', 'digital']):
+        theme = 'tech'
+    elif any(word in content_lower for word in ['finance', 'money', 'budget', 'cost', 'revenue', 'profit']):
+        theme = 'finance'
+    elif any(word in content_lower for word in ['health', 'medical', 'patient', 'care', 'hospital']):
+        theme = 'health'
+    elif any(word in content_lower for word in ['education', 'learn', 'student', 'school', 'training']):
+        theme = 'education'
+    elif any(word in content_lower for word in ['home', 'house', 'smart', 'automation', 'iot']):
+        theme = 'smart_home'
+    else:
+        theme = 'corporate'
+    
     # Create text version for preview
-    text_content = f"📊 PRESENTATION: {title}\n\nSources: {', '.join(sources)}\n\n"
+    text_content = f"📊 PRESENTATION: {title}\n\nSources: {', '.join(sources)}\nTheme: {theme}\n\n"
     for slide in slides_data:
-        text_content += f"\n{'='*50}\nSlide {slide.get('slideNumber', '?')}: {slide.get('title', 'Untitled')}\n{'='*50}\n"
+        text_content += f"\n{'='*50}\nSlide {slide.get('slideNumber', '?')}: {slide.get('title', 'Untitled')} [{slide.get('layout', 'bullets')}]\n{'='*50}\n"
+        if slide.get('subtitle'):
+            text_content += f"Subtitle: {slide.get('subtitle')}\n"
         for bullet in slide.get('bullets', []):
             text_content += f"• {bullet}\n"
+        if slide.get('highlight'):
+            text_content += f"💡 Highlight: {slide.get('highlight')}\n"
+        text_content += f"🖼️ Image: {slide.get('imageKeyword', 'business')}\n"
         text_content += f"\n📝 Notes: {slide.get('notes', '')}\n"
     
     return GenerateResponse(
@@ -428,7 +469,8 @@ Only output the JSON array, no other text."""
         type="slides",
         title=title,
         content=text_content,
-        slides_data=slides_data
+        slides_data=slides_data,
+        theme=theme
     )
 
 async def generate_report(content: str, sources: List[str], title: str) -> GenerateResponse:
