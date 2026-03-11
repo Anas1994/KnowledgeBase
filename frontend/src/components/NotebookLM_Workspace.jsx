@@ -149,9 +149,95 @@ const INIT_CHAT = [
   { id: 4, role: "ai", content: "According to the Neural Scaling Laws source in your notebook, the relationship between compute, parameters, and performance follows predictable power-law curves.\n\nAt 70B scale, models typically achieve:\n• Emergent capabilities in multi-step reasoning\n• Strong few-shot generalization\n• Competitive benchmark performance when instruction-tuned\n\nThe Chinchilla optimal compute budget suggests 70B models should train on ~1.4T tokens for maximum efficiency.", citations: ["Neural Scaling Laws · §2.1", "Stanford AI Index · §4.1"], time: "2:19 PM", pinned: false },
 ];
 const INIT_OUTPUTS = [
-  { id: 1, type: "report", title: "LLM Architecture Comparison Report", created: "Mar 10", size: "4.2 KB", notebookId: "nb1" },
-  { id: 2, type: "audio", title: "AI Research Overview Podcast", created: "Mar 9", size: "8.1 MB", notebookId: "nb1" },
-  { id: 3, type: "mindmap", title: "Neural Architecture Knowledge Map", created: "Mar 8", size: "156 KB", notebookId: "nb1" },
+  { id: 1, type: "report", title: "LLM Architecture Comparison Report", created: "Mar 10", size: "4.2 KB", notebookId: "nb1", content: `📄 RESEARCH REPORT
+
+Title: LLM Architecture Comparison Report
+Generated: Mar 10, 2026
+Sources: 3 documents
+
+═══════════════════════════════════════
+1. EXECUTIVE SUMMARY
+═══════════════════════════════════════
+This report synthesizes findings from 3 indexed sources comparing major LLM architectures. The analysis reveals consistent patterns across materials with notable insights for practitioners and researchers alike.
+
+2. KEY FINDINGS
+• GPT-4 uses proprietary architecture with undisclosed parameter count
+• Llama 3.1 employs Grouped Query Attention (GQA) for efficiency  
+• Context window capabilities have expanded to 128K+ tokens
+• Training data quality matters more than quantity per Chinchilla scaling laws
+
+3. ARCHITECTURE COMPARISON
+┌──────────────────┬─────────────┬─────────────┬─────────────┐
+│ Feature          │ GPT-4       │ Llama 3.1   │ Claude 3    │
+├──────────────────┼─────────────┼─────────────┼─────────────┤
+│ Parameters       │ Undisclosed │ 405B        │ Undisclosed │
+│ Context Window   │ 128K        │ 128K        │ 200K        │
+│ Architecture     │ MoE         │ Dense       │ Dense       │
+│ Open Weights     │ No          │ Yes         │ No          │
+└──────────────────┴─────────────┴─────────────┴─────────────┘
+
+4. CONCLUSIONS
+Based on the evidence, transformer architectures with attention mechanisms remain the dominant paradigm, with efficiency optimizations like GQA becoming standard.
+
+[Word count: ~2,400]` },
+  { id: 2, type: "audio", title: "AI Research Overview Podcast", created: "Mar 9", size: "8.1 MB", notebookId: "nb1", content: `🎙️ AI PODCAST SCRIPT — "AI Research Overview"
+
+HOST A: Welcome back to InsightOS Audio! Today we're diving deep into the knowledge base covering AI research trends.
+
+HOST B: That's right. We've processed 3 sources and extracted the key themes around LLM architectures.
+
+HOST A: Let's start with the fundamentals. The sources reveal three major themes: scaling laws, attention mechanisms, and efficiency optimizations.
+
+HOST B: What really stood out to me was the tension between open and closed source models. The Llama papers make a compelling case for open research...
+
+HOST A: Exactly. "LLM Architectures Survey 2024" makes a compelling case that open models are rapidly catching up to proprietary systems.
+
+HOST B: And the scaling laws paper fundamentally changed how we think about training efficiency. It's not just about making models bigger anymore.
+
+HOST A: The Chinchilla findings suggest that many models were undertrained relative to their size. This insight has influenced every major training run since.
+
+HOST B: Looking at transformer architectures specifically, the attention mechanism remains the key innovation, but we're seeing interesting variants emerge.
+
+HOST A: Grouped Query Attention, Multi-Query Attention, Sliding Window Attention - there's a lot of experimentation happening.
+
+HOST B: To wrap up, the field is moving incredibly fast, but the fundamentals from "Attention Is All You Need" still form the backbone of modern LLMs.
+
+[Duration: ~12 minutes | Generated from 3 sources]` },
+  { id: 3, type: "mindmap", title: "Neural Architecture Knowledge Map", created: "Mar 8", size: "156 KB", notebookId: "nb1", content: `🗺️ MIND MAP — "Neural Architecture Knowledge Map"
+
+Central Node: LLM Architectures
+
+├── Theme 1: Transformer Fundamentals
+│   ├── Self-Attention Mechanism
+│   ├── Positional Encodings
+│   ├── Multi-Head Attention
+│   └── Feed-Forward Networks
+│
+├── Theme 2: Scaling Strategies
+│   ├── Parameter Scaling
+│   ├── Data Scaling (Chinchilla)
+│   ├── Compute-Optimal Training
+│   └── Emergent Capabilities
+│
+├── Theme 3: Efficiency Optimizations
+│   ├── Grouped Query Attention (GQA)
+│   ├── Multi-Query Attention (MQA)
+│   ├── Flash Attention
+│   └── Mixture of Experts (MoE)
+│
+├── Theme 4: Model Families
+│   ├── GPT Series (OpenAI)
+│   ├── Llama Family (Meta)
+│   ├── Claude (Anthropic)
+│   └── Gemini (Google)
+│
+└── Theme 5: Applications
+    ├── Text Generation
+    ├── Code Completion
+    ├── Reasoning Tasks
+    └── Multi-Modal Understanding
+
+[36 nodes | Generated from 3 sources]` },
 ];
 const INIT_NOTES = [
   { id: 1, title: "Key Takeaways on Scaling", content: "The Chinchilla paper fundamentally shifted how we think about compute-optimal training. Key insight: model size and dataset size should scale equally, not model size alone.", created: "Mar 9", pinned: true },
@@ -391,9 +477,15 @@ export default function InsightOS() {
   }, [toast]);
 
   const downloadOutput = useCallback((out) => {
-    const tool = STUDIO_TOOLS.find(t => t.id === out.type);
-    const blob = new Blob([out.content || ""], { type: "text/plain" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${out.title}.${tool?.ext || "txt"}`; a.click();
+    // All generated content is text-based (scripts, summaries, etc.)
+    // Export as .txt to ensure files can be opened properly
+    const blob = new Blob([out.content || ""], { type: "text/plain;charset=utf-8" });
+    const cleanTitle = out.title.replace(/[<>:"/\\|?*]/g, "_");
+    const a = document.createElement("a"); 
+    a.href = URL.createObjectURL(blob); 
+    a.download = `${cleanTitle}.txt`; 
+    a.click();
+    URL.revokeObjectURL(a.href);
     toast("Download started");
   }, [toast]);
 
@@ -1370,16 +1462,16 @@ export default function InsightOS() {
           {modal === "output" && modalData && (() => {
             const tool = toolFor(modalData.type);
             return (
-              <div style={{ background: "white", borderRadius: 22, width: 640, maxHeight: "82vh", boxShadow: "0 24px 80px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div style={{ background: "white", borderRadius: 22, width: 640, maxHeight: "82vh", boxShadow: "0 24px 80px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", zIndex: 101 }}>
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #E7EAF3", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: tool.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: tool.color }}><Ic n={tool.icon} size={15} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: "#1A1F36" }}>{modalData.title}</div>
                     <div style={{ fontSize: 10, color: "#9CA3AF" }}>{modalData.created} · {modalData.size}</div>
                   </div>
-                  <button onClick={() => downloadOutput(modalData)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: tool.color + "18", color: tool.color, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}><Ic n="download" size={12} /> Export</button>
-                  <button onClick={() => saveToNotes({ content: modalData.content })} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "#F8F9FF", color: "#6B7285", fontSize: 11, fontWeight: 700, border: "1px solid #E7EAF3", cursor: "pointer" }}><Ic n="save" size={12} /> Save</button>
-                  <button onClick={() => setModal(null)} style={{ color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
+                  <button data-testid="output-export-btn" onClick={() => downloadOutput(modalData)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: tool.color + "18", color: tool.color, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", position: "relative", zIndex: 102 }}><Ic n="download" size={12} /> Export</button>
+                  <button data-testid="output-save-btn" onClick={() => saveToNotes({ content: modalData.content })} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, background: "#F8F9FF", color: "#6B7285", fontSize: 11, fontWeight: 700, border: "1px solid #E7EAF3", cursor: "pointer" }}><Ic n="save" size={12} /> Save</button>
+                  <button data-testid="output-close-btn" onClick={() => setModal(null)} style={{ color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
                   <pre style={{ fontFamily: "inherit", fontSize: 12, color: "#1A1F36", lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{modalData.content || "No content generated."}</pre>
