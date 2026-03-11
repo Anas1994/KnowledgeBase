@@ -13,6 +13,7 @@ import httpx
 from bs4 import BeautifulSoup
 import PyPDF2
 import io
+from docx import Document as DocxDocument
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
@@ -89,10 +90,38 @@ async def extract_text_from_pdf(file_content: bytes) -> str:
         pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
         text = ""
         for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
         return text.strip()
     except Exception as e:
         logger.error(f"PDF extraction error: {e}")
+        return ""
+
+async def extract_text_from_docx(file_content: bytes) -> str:
+    """Extract text from DOCX file"""
+    try:
+        doc = DocxDocument(io.BytesIO(file_content))
+        text_parts = []
+        
+        # Extract text from paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text.strip())
+        
+        # Extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = []
+                for cell in row.cells:
+                    if cell.text.strip():
+                        row_text.append(cell.text.strip())
+                if row_text:
+                    text_parts.append(" | ".join(row_text))
+        
+        return "\n".join(text_parts)
+    except Exception as e:
+        logger.error(f"DOCX extraction error: {e}")
         return ""
 
 async def extract_text_from_url(url: str) -> str:
@@ -165,22 +194,41 @@ async def get_status_checks():
 
 @api_router.post("/sources/upload")
 async def upload_source(file: UploadFile = File(...), notebook_id: str = "default"):
-    """Upload and process a document file (PDF, TXT, etc.)"""
+    """Upload and process a document file (PDF, DOCX, TXT, etc.)"""
     try:
         content = await file.read()
         filename = file.filename or "unknown"
         file_ext = filename.split('.')[-1].lower() if '.' in filename else 'txt'
         
+        logger.info(f"Processing file: {filename}, extension: {file_ext}, size: {len(content)} bytes")
+        
         # Extract text based on file type
         if file_ext == 'pdf':
             text = await extract_text_from_pdf(content)
             file_type = 'pdf'
-        else:
+        elif file_ext in ['docx', 'doc']:
+            text = await extract_text_from_docx(content)
+            file_type = 'docx'
+        elif file_ext == 'txt':
             text = content.decode('utf-8', errors='ignore')
             file_type = 'txt'
+        else:
+            # Try to decode as text first, fallback to docx if it looks like a ZIP
+            try:
+                if content[:4] == b'PK\x03\x04':  # ZIP file signature (DOCX is a ZIP)
+                    text = await extract_text_from_docx(content)
+                    file_type = 'docx'
+                else:
+                    text = content.decode('utf-8', errors='ignore')
+                    file_type = 'txt'
+            except:
+                text = content.decode('utf-8', errors='ignore')
+                file_type = 'txt'
         
-        if not text:
-            raise HTTPException(status_code=400, detail="Could not extract text from file")
+        logger.info(f"Extracted text length: {len(text)} chars")
+        
+        if not text or len(text.strip()) < 10:
+            raise HTTPException(status_code=400, detail=f"Could not extract readable text from file. File type: {file_ext}")
         
         # Create source document
         source = Source(
@@ -204,7 +252,8 @@ async def upload_source(file: UploadFile = File(...), notebook_id: str = "defaul
             "type": source.type,
             "chunks": source.chunks,
             "size": source.size,
-            "status": source.status
+            "status": source.status,
+            "content_preview": text[:200] + "..." if len(text) > 200 else text
         }
     except HTTPException:
         raise
