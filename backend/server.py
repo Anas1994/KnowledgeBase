@@ -625,6 +625,49 @@ Sources analyzed: {len(sources)}
         content=datatable
     )
 
+# ─── OUTPUT STORAGE ─────────────────────────────────────────────────────────
+
+class SaveOutputRequest(BaseModel):
+    id: str
+    type: str
+    title: str
+    content: str
+    slides_data: Optional[List[dict]] = None
+    notebook_id: str = "default"
+
+@api_router.post("/outputs")
+async def save_output(request: SaveOutputRequest):
+    """Save a generated output to the database"""
+    doc = {
+        "id": request.id,
+        "type": request.type,
+        "title": request.title,
+        "content": request.content,
+        "slides_data": request.slides_data,
+        "notebook_id": request.notebook_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "size": f"{len(request.content) / 1024:.1f} KB"
+    }
+    await db.outputs.insert_one(doc)
+    return {"status": "saved", "id": request.id}
+
+@api_router.get("/outputs")
+async def get_outputs(notebook_id: str = "default"):
+    """Get all outputs for a notebook"""
+    outputs = await db.outputs.find(
+        {"notebook_id": notebook_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    return outputs
+
+@api_router.delete("/outputs/{output_id}")
+async def delete_output(output_id: str):
+    """Delete an output"""
+    result = await db.outputs.delete_one({"id": output_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Output not found")
+    return {"status": "deleted"}
+
 # ─── CHAT WITH SOURCES ──────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):

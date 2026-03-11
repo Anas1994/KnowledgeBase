@@ -269,11 +269,12 @@ export default function InsightOS() {
   const [view, setView] = useState("overview");
   const [notebookTitle, setNotebookTitle] = useState("AI Research Notebook");
   const [editTitle, setEditTitle] = useState(false);
-  const [sources, setSources] = useState(INIT_SOURCES);
-  const [messages, setMessages] = useState(INIT_CHAT);
-  const [outputs, setOutputs] = useState(INIT_OUTPUTS);
+  const [sources, setSources] = useState([]); // Load from backend
+  const [messages, setMessages] = useState([]);
+  const [outputs, setOutputs] = useState([]);
   const [notes, setNotes] = useState(INIT_NOTES);
   const [activityLog, setActivityLog] = useState(ACTIVITY_LOG_INIT);
+  const [sourcesLoading, setSourcesLoading] = useState(true);
   // UI state
   const [studioOpen, setStudioOpen] = useState(true);
   const [chatInput, setChatInput] = useState("");
@@ -317,6 +318,65 @@ export default function InsightOS() {
   const titleRef = useRef(null);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, generating]);
+
+  // Load sources from backend on mount
+  useEffect(() => {
+    const loadSources = async () => {
+      setSourcesLoading(true);
+      try {
+        const response = await fetch(`${API_URL}/api/sources?notebook_id=default`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            // Transform backend data to frontend format
+            const formattedSources = data.map(s => ({
+              id: s.id,
+              title: s.title,
+              type: s.type,
+              date: s.created_at ? new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Unknown",
+              chunks: s.chunks || 0,
+              size: s.size || "—",
+              status: s.status || "indexed",
+              url: s.url
+            }));
+            setSources(formattedSources);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load sources:', e);
+      }
+      setSourcesLoading(false);
+    };
+    loadSources();
+  }, []);
+
+  // Load outputs from backend on mount
+  useEffect(() => {
+    const loadOutputs = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/outputs?notebook_id=default`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            const formattedOutputs = data.map(o => ({
+              id: o.id,
+              type: o.type,
+              title: o.title,
+              content: o.content,
+              slides_data: o.slides_data,
+              created: o.created_at ? new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Unknown",
+              size: o.size || "—",
+              notebookId: o.notebook_id
+            }));
+            setOutputs(formattedOutputs);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load outputs:', e);
+      }
+    };
+    loadOutputs();
+  }, []);
 
   // Toast helper
   const toast = useCallback((msg, type = "success") => {
@@ -636,8 +696,26 @@ export default function InsightOS() {
         slides_data: data.slides_data,
         created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         size: `${(data.content?.length / 1024).toFixed(1)} KB`,
-        notebookId: "nb1"
+        notebookId: "default"
       };
+      
+      // Save to backend for persistence
+      try {
+        await fetch(`${API_URL}/api/outputs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: newOut.id,
+            type: newOut.type,
+            title: newOut.title,
+            content: newOut.content,
+            slides_data: newOut.slides_data,
+            notebook_id: 'default'
+          })
+        });
+      } catch (saveErr) {
+        console.error('Failed to save output:', saveErr);
+      }
       
       setOutputs(p => [newOut, ...p]);
       setGenTool(null);
@@ -652,8 +730,22 @@ export default function InsightOS() {
     }
   }, [sources, notebookTitle, logActivity, toast]);
 
-  const deleteOutput = useCallback((id) => {
-    setConfirm({ msg: "Delete this output?", onYes: () => { setOutputs(p => p.filter(o => o.id !== id)); setConfirm(null); toast("Output deleted", "warn"); }, onNo: () => setConfirm(null) });
+  const deleteOutput = useCallback(async (id) => {
+    setConfirm({ 
+      msg: "Delete this output?", 
+      onYes: async () => { 
+        setOutputs(p => p.filter(o => o.id !== id)); 
+        setConfirm(null); 
+        toast("Output deleted", "warn");
+        // Also delete from backend
+        try {
+          await fetch(`${API_URL}/api/outputs/${id}`, { method: 'DELETE' });
+        } catch (e) {
+          console.error('Failed to delete output:', e);
+        }
+      }, 
+      onNo: () => setConfirm(null) 
+    });
   }, [toast]);
 
   // Load pptxgenjs dynamically from CDN
