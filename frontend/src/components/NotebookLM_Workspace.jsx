@@ -725,8 +725,8 @@ export default function InsightOS() {
       setModalData(newOut);
       setModal("output");
       
-      // Generate images asynchronously for key slides (runs in background)
-      if (tool.id === 'slides' && newOut.slides_data) {
+      // Generate images asynchronously for key slides or infographic sections (runs in background)
+      if ((tool.id === 'slides' || tool.id === 'infographic') && newOut.slides_data) {
         generateImagesAsync(newOut);
       }
     } catch (e) {
@@ -736,17 +736,23 @@ export default function InsightOS() {
     }
   }, [sources, notebookTitle, logActivity, toast]);
 
-  // Generate images asynchronously for slides
+  // Generate images asynchronously for slides or infographics
   const generateImagesAsync = useCallback(async (output) => {
     if (!output.slides_data) return;
     
-    const slidesToProcess = output.slides_data.filter((s, i) => 
-      i >= 1 && i <= 4 && !s.imageBase64 // Slides 2-5 without images
+    // For slides: process slides 2-5
+    // For infographics: process sections that need images
+    const isInfographic = output.type === 'infographic';
+    
+    const itemsToProcess = output.slides_data.filter((s, i) => 
+      isInfographic 
+        ? (i < 3 && !s.sectionImage) // First 3 infographic sections
+        : (i >= 1 && i <= 4 && !s.imageBase64) // Slides 2-5
     );
     
-    if (slidesToProcess.length === 0) return;
+    if (itemsToProcess.length === 0) return;
     
-    toast(`Generating ${slidesToProcess.length} images in background...`, "warn");
+    toast(`Generating ${itemsToProcess.length} images in background...`, "warn");
     
     let imagesGenerated = 0;
     for (const slide of slidesToProcess) {
@@ -1283,6 +1289,187 @@ export default function InsightOS() {
       } catch (e) {
         console.error('PPTX generation error:', e);
         toast("Failed to generate PPTX, downloading as text", "warn");
+      }
+    }
+    
+    // For infographic, generate a visual PNG using Canvas
+    if (out.type === "infographic" && out.slides_data && out.slides_data.length > 0) {
+      try {
+        toast("Creating infographic image...", "warn");
+        
+        // Get theme colors
+        const themeName = out.theme || 'corporate';
+        const theme = THEMES[themeName] || THEMES.corporate;
+        
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const sections = out.slides_data;
+        const sectionHeight = 200;
+        const headerHeight = 250;
+        canvas.width = 1200;
+        canvas.height = headerHeight + (sections.length * sectionHeight) + 100;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Header background
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, headerHeight);
+        gradient.addColorStop(0, '#' + theme.dark);
+        gradient.addColorStop(1, '#' + theme.primary);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, headerHeight);
+        
+        // Title
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(out.title, canvas.width / 2, 100);
+        
+        // Subtitle
+        ctx.font = '24px Arial';
+        ctx.fillStyle = '#' + theme.light;
+        ctx.fillText(`Based on ${sections.length} key insights`, canvas.width / 2, 150);
+        
+        // Decorative line
+        ctx.strokeStyle = '#' + theme.accent;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 100, 180);
+        ctx.lineTo(canvas.width / 2 + 100, 180);
+        ctx.stroke();
+        
+        // Add header image if available
+        if (sections[0]?.headerImage) {
+          try {
+            const img = new Image();
+            img.src = `data:image/png;base64,${sections[0].headerImage}`;
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              setTimeout(reject, 5000);
+            });
+            // Draw small image in corner
+            ctx.drawImage(img, canvas.width - 220, 20, 200, 200);
+          } catch (imgErr) {
+            console.log('Header image load failed');
+          }
+        }
+        
+        // Color palette for sections
+        const sectionColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+        
+        // Draw sections
+        let yOffset = headerHeight + 30;
+        sections.forEach((section, index) => {
+          const isEven = index % 2 === 0;
+          const sectionColor = sectionColors[index % sectionColors.length];
+          
+          // Section card background
+          ctx.fillStyle = '#FFFFFF';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+          ctx.shadowBlur = 20;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 4;
+          
+          const cardX = isEven ? 40 : 620;
+          const cardWidth = 540;
+          
+          // Draw rounded rectangle
+          const cardY = yOffset;
+          const cardHeight = 170;
+          const radius = 16;
+          
+          ctx.beginPath();
+          ctx.moveTo(cardX + radius, cardY);
+          ctx.lineTo(cardX + cardWidth - radius, cardY);
+          ctx.quadraticCurveTo(cardX + cardWidth, cardY, cardX + cardWidth, cardY + radius);
+          ctx.lineTo(cardX + cardWidth, cardY + cardHeight - radius);
+          ctx.quadraticCurveTo(cardX + cardWidth, cardY + cardHeight, cardX + cardWidth - radius, cardY + cardHeight);
+          ctx.lineTo(cardX + radius, cardY + cardHeight);
+          ctx.quadraticCurveTo(cardX, cardY + cardHeight, cardX, cardY + cardHeight - radius);
+          ctx.lineTo(cardX, cardY + radius);
+          ctx.quadraticCurveTo(cardX, cardY, cardX + radius, cardY);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Reset shadow
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          
+          // Section number badge
+          ctx.fillStyle = sectionColor;
+          ctx.beginPath();
+          ctx.arc(cardX + 40, cardY + 40, 24, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(index + 1), cardX + 40, cardY + 47);
+          
+          // Section title
+          ctx.fillStyle = '#1F2937';
+          ctx.font = 'bold 22px Arial';
+          ctx.textAlign = 'left';
+          ctx.fillText(section.title || 'Section', cardX + 80, cardY + 45);
+          
+          // Stat if available
+          if (section.stat) {
+            ctx.fillStyle = sectionColor;
+            ctx.font = 'bold 36px Arial';
+            ctx.fillText(section.stat, cardX + 80, cardY + 95);
+            
+            ctx.fillStyle = '#6B7280';
+            ctx.font = '16px Arial';
+            ctx.fillText(section.statLabel || '', cardX + 80 + ctx.measureText(section.stat).width + 15, cardY + 90);
+          }
+          
+          // Bullets
+          ctx.fillStyle = '#4B5563';
+          ctx.font = '14px Arial';
+          const bullets = section.bullets || [];
+          bullets.slice(0, 3).forEach((bullet, bIndex) => {
+            const bulletY = cardY + (section.stat ? 115 : 75) + (bIndex * 22);
+            ctx.fillText('• ' + (bullet.length > 60 ? bullet.substring(0, 57) + '...' : bullet), cardX + 80, bulletY);
+          });
+          
+          // Icon indicator
+          ctx.fillStyle = sectionColor + '30';
+          ctx.beginPath();
+          ctx.arc(cardX + cardWidth - 50, cardY + cardHeight / 2, 30, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Move to next row every 2 sections
+          if (!isEven) {
+            yOffset += sectionHeight;
+          }
+        });
+        
+        // Footer
+        ctx.fillStyle = '#' + theme.dark;
+        ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Generated by InsightOS • AI-Powered Research Assistant', canvas.width / 2, canvas.height - 25);
+        
+        // Convert to PNG and download
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${out.title.replace(/[<>:"/\\|?*]/g, "_")}_infographic.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast("Infographic downloaded!");
+        }, 'image/png');
+        return;
+      } catch (e) {
+        console.error('Infographic generation error:', e);
+        toast("Failed to generate infographic, downloading as text", "warn");
       }
     }
     

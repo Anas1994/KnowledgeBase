@@ -429,6 +429,8 @@ async def generate_output(request: GenerateRequest):
         return await generate_audio_script(combined_content, source_titles, title)
     elif request.output_type == "datatable":
         return await generate_datatable(combined_content, source_titles, title)
+    elif request.output_type == "infographic":
+        return await generate_infographic(combined_content, source_titles, title)
     else:
         raise HTTPException(status_code=400, detail=f"Unknown output type: {request.output_type}")
 
@@ -784,6 +786,125 @@ Sources analyzed: {len(sources)}
         type="datatable",
         title=title,
         content=datatable
+    )
+
+async def generate_infographic(content: str, sources: List[str], title: str) -> GenerateResponse:
+    """Generate an infographic with AI-created visuals"""
+    
+    prompt = f"""Based on the following content from {len(sources)} sources, create a professional infographic structure.
+
+SOURCES: {', '.join(sources)}
+
+CONTENT:
+{content}
+
+Create an infographic with 5-7 sections. For each section provide:
+1. A clear section title (max 5 words)
+2. A key statistic or number (if applicable, e.g., "85%", "4 Steps", "$2.5M")
+3. 2-3 bullet points of supporting information
+4. An icon suggestion from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase, mobile, cloud
+5. A visual type: "stat", "list", "process", "comparison", "timeline", "quote"
+
+Format your response as JSON array:
+[
+  {{
+    "sectionNumber": 1,
+    "title": "Section Title",
+    "stat": "85%",
+    "statLabel": "Key Metric",
+    "bullets": ["Point 1", "Point 2"],
+    "icon": "chart",
+    "visualType": "stat",
+    "color": "blue"
+  }}
+]
+
+Use varied visual types. Start with a header section and end with a call-to-action or summary.
+Only output the JSON array, no other text."""
+
+    response = await generate_with_ai(prompt, "You are an expert infographic designer. Create visually engaging, data-driven infographic content.")
+    
+    # Parse JSON response
+    try:
+        import json
+        response_clean = response.strip()
+        if response_clean.startswith("```"):
+            response_clean = response_clean.split("```")[1]
+            if response_clean.startswith("json"):
+                response_clean = response_clean[4:]
+        infographic_data = json.loads(response_clean)
+        
+        # Ensure all sections have required fields
+        for section in infographic_data:
+            section.setdefault('visualType', 'list')
+            section.setdefault('icon', 'briefcase')
+            section.setdefault('stat', '')
+            section.setdefault('statLabel', '')
+            section.setdefault('bullets', [])
+            section.setdefault('color', 'blue')
+    except Exception as e:
+        logger.error(f"Infographic JSON parse error: {e}")
+        infographic_data = [
+            {"sectionNumber": 1, "title": title, "stat": str(len(sources)), "statLabel": "Sources Analyzed", "bullets": [], "icon": "chart", "visualType": "stat", "color": "blue"},
+            {"sectionNumber": 2, "title": "Key Findings", "bullets": ["Analysis generated from source documents"], "icon": "lightbulb", "visualType": "list", "color": "green"}
+        ]
+    
+    # Determine theme based on content
+    content_lower = content.lower()
+    if any(word in content_lower for word in ['tech', 'software', 'code', 'development', 'app', 'digital']):
+        theme = 'tech'
+    elif any(word in content_lower for word in ['health', 'medical', 'patient', 'care', 'hospital']):
+        theme = 'health'
+    elif any(word in content_lower for word in ['finance', 'money', 'budget', 'cost', 'revenue']):
+        theme = 'finance'
+    else:
+        theme = 'corporate'
+    
+    # Generate header image for the infographic
+    logger.info(f"Generating infographic header image...")
+    header_image = None
+    try:
+        header_image = await generate_slide_image(
+            title,
+            ' '.join([s.get('title', '') for s in infographic_data[:3]]),
+            'infographic',
+            theme
+        )
+        if header_image:
+            logger.info("Header image generated successfully")
+    except Exception as e:
+        logger.error(f"Header image generation failed: {e}")
+    
+    # Create text preview
+    text_content = f"""📊 INFOGRAPHIC: {title}
+
+Sources: {', '.join(sources)}
+Theme: {theme}
+Sections: {len(infographic_data)}
+
+{'═'*60}
+"""
+    for section in infographic_data:
+        text_content += f"\n[{section.get('visualType', 'list').upper()}] {section.get('title', 'Section')}\n"
+        if section.get('stat'):
+            text_content += f"   📈 {section.get('stat')} - {section.get('statLabel', '')}\n"
+        for bullet in section.get('bullets', []):
+            text_content += f"   • {bullet}\n"
+        text_content += f"   🎨 Icon: {section.get('icon')} | Color: {section.get('color')}\n"
+    
+    text_content += f"\n{'═'*60}\n"
+    
+    # Add header image to first section if available
+    if header_image and infographic_data:
+        infographic_data[0]['headerImage'] = header_image
+    
+    return GenerateResponse(
+        id=str(uuid.uuid4()),
+        type="infographic",
+        title=title,
+        content=text_content,
+        slides_data=infographic_data,  # Reuse slides_data field for infographic sections
+        theme=theme
     )
 
 # ─── OUTPUT STORAGE ─────────────────────────────────────────────────────────
