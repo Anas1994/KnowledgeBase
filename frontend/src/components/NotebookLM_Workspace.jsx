@@ -755,15 +755,15 @@ export default function InsightOS() {
     toast(`Generating ${itemsToProcess.length} images in background...`, "warn");
     
     let imagesGenerated = 0;
-    for (const slide of slidesToProcess) {
+    for (const item of itemsToProcess) {
       try {
         const response = await fetch(`${API_URL}/api/generate-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            slide_title: slide.title,
-            slide_content: (slide.bullets || []).join(' '),
-            layout: slide.layout || 'bullets',
+            slide_title: item.title,
+            slide_content: (item.bullets || []).join(' '),
+            layout: item.layout || item.visualType || 'bullets',
             theme: output.theme || 'corporate'
           })
         });
@@ -771,8 +771,8 @@ export default function InsightOS() {
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.imageBase64) {
-            // Update the slide with the image
-            slide.imageBase64 = result.imageBase64;
+            // Update the item with the image
+            item.imageBase64 = result.imageBase64;
             imagesGenerated++;
             
             // Update outputs state with new image
@@ -784,7 +784,7 @@ export default function InsightOS() {
           }
         }
       } catch (e) {
-        console.error('Image generation failed for slide:', slide.title, e);
+        console.error('Image generation failed for:', item.title, e);
       }
     }
     
