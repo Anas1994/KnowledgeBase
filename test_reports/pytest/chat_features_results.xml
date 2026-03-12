@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="9" skipped="0" tests="14" time="474.247" timestamp="2026-03-12T11:58:19.003694+00:00" hostname="agent-env-dd690fda-b3e4-4086-ba64-10ce875cbafb"><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_api_health" time="0.170" /><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_sources_exist" time="0.182" /><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_basic_query" time="14.329" /><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_translation_to_arabic" time="60.114"><failure message="AssertionError: Translation failed: The preview environment is not responding. It may be starting up.&#10;  &#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:64: in test_chat_translation_to_arabic
+    assert response.status_code == 200, f"Translation failed: {response.text}"
+E   AssertionError: Translation failed: The preview environment is not responding. It may be starting up.
+E     
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_depth_fast" time="48.804" /><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_depth_deep" time="60.132"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:105: in test_chat_depth_deep
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_multi_turn_conversation" time="60.265"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:124: in test_chat_multi_turn_conversation
+    assert first_response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_summarize_sources" time="60.238"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:161: in test_chat_summarize_sources
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_key_findings" time="56.170" /><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_extract_action_items" time="60.153"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:189: in test_chat_extract_action_items
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_response_has_markdown_formatting" time="53.142"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:203: in test_chat_response_has_markdown_formatting
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatAPI" name="test_chat_citations_returned" time="0.133"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:230: in test_chat_citations_returned
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatErrorHandling" name="test_chat_empty_message" time="0.122"><failure message="assert 502 in [200, 400, 422]&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:251: in test_chat_empty_message
+    assert response.status_code in [200, 400, 422]
+E   assert 502 in [200, 400, 422]
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_chat_features.TestChatErrorHandling" name="test_chat_invalid_depth" time="0.168"><failure message="assert 502 in [200, 400, 422]&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_chat_features.py:264: in test_chat_invalid_depth
+    assert response.status_code in [200, 400, 422]
+E   assert 502 in [200, 400, 422]
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase></testsuite></testsuites>

@@ -4,6 +4,76 @@ import { useTheme } from "../theme/ThemeContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// ─── Simple Markdown renderer for AI chat messages ────────────────────────
+const MdText = ({ text }) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+  let listItems = [];
+  let listType = null; // 'ul' or 'ol'
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(
+        listType === 'ol'
+          ? <ol key={`ol-${elements.length}`} style={{ margin: '6px 0', paddingLeft: 20, fontSize: 'inherit', lineHeight: 1.7 }}>{listItems}</ol>
+          : <ul key={`ul-${elements.length}`} style={{ margin: '6px 0', paddingLeft: 18, fontSize: 'inherit', lineHeight: 1.7, listStyleType: 'disc' }}>{listItems}</ul>
+      );
+      listItems = [];
+      listType = null;
+    }
+  };
+
+  const renderInline = (str) => {
+    // Bold, italic, inline code
+    const parts = [];
+    let remaining = str;
+    let idx = 0;
+    const rx = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+    let match;
+    let lastIdx = 0;
+    while ((match = rx.exec(remaining)) !== null) {
+      if (match.index > lastIdx) parts.push(<span key={idx++}>{remaining.slice(lastIdx, match.index)}</span>);
+      if (match[2]) parts.push(<strong key={idx++}>{match[2]}</strong>);
+      else if (match[3]) parts.push(<em key={idx++}>{match[3]}</em>);
+      else if (match[4]) parts.push(<code key={idx++} style={{ background: 'var(--bg-tint)', padding: '1px 5px', borderRadius: 4, fontSize: '0.9em', fontFamily: 'monospace' }}>{match[4]}</code>);
+      lastIdx = match.index + match[0].length;
+    }
+    if (lastIdx < remaining.length) parts.push(<span key={idx++}>{remaining.slice(lastIdx)}</span>);
+    return parts.length > 0 ? parts : str;
+  };
+
+  lines.forEach((line, li) => {
+    const trimmed = line.trimStart();
+    // Headers
+    if (trimmed.startsWith('### ')) { flushList(); elements.push(<div key={li} style={{ fontWeight: 700, fontSize: '1.05em', marginTop: 10, marginBottom: 3, color: 'var(--text-primary)' }}>{renderInline(trimmed.slice(4))}</div>); return; }
+    if (trimmed.startsWith('## ')) { flushList(); elements.push(<div key={li} style={{ fontWeight: 700, fontSize: '1.1em', marginTop: 12, marginBottom: 4, color: 'var(--text-primary)' }}>{renderInline(trimmed.slice(3))}</div>); return; }
+    if (trimmed.startsWith('# ')) { flushList(); elements.push(<div key={li} style={{ fontWeight: 800, fontSize: '1.15em', marginTop: 12, marginBottom: 4, color: 'var(--text-primary)' }}>{renderInline(trimmed.slice(2))}</div>); return; }
+    // Unordered list
+    if (/^[-*•]\s/.test(trimmed)) {
+      if (listType !== 'ul') { flushList(); listType = 'ul'; }
+      listItems.push(<li key={li}>{renderInline(trimmed.replace(/^[-*•]\s/, ''))}</li>);
+      return;
+    }
+    // Ordered list
+    if (/^\d+[.)]\s/.test(trimmed)) {
+      if (listType !== 'ol') { flushList(); listType = 'ol'; }
+      listItems.push(<li key={li}>{renderInline(trimmed.replace(/^\d+[.)]\s/, ''))}</li>);
+      return;
+    }
+    // Horizontal rule
+    if (/^---+$/.test(trimmed)) { flushList(); elements.push(<hr key={li} style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '8px 0' }} />); return; }
+    // Empty line
+    if (!trimmed) { flushList(); elements.push(<div key={li} style={{ height: 6 }} />); return; }
+    // Paragraph
+    flushList();
+    elements.push(<div key={li} style={{ marginBottom: 2 }}>{renderInline(trimmed)}</div>);
+  });
+  flushList();
+  return <>{elements}</>;
+};
+
+
 // ─── SVG Icon primitive ───────────────────────────────────────────────────
 const I = ({ d, size = 16, sw = 1.75, fill = "none", stroke = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
@@ -599,17 +669,26 @@ export default function HealthOS() {
     if (!indexed.length) { toast("Add and index at least one source first", "warn"); return; }
     
     const userMsg = { id: Date.now(), role: "user", content: text, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
-    setMessages(p => [...p, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setChatInput("");
     setGenerating(true);
     
     try {
+      // Build history from previous messages (last 10)
+      const history = updatedMessages.slice(-11, -1).map(m => ({
+        role: m.role === "ai" ? "assistant" : "user",
+        content: m.content
+      }));
+
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
-          notebook_id: 'default'
+          notebook_id: 'default',
+          history,
+          depth: chatDepth
         })
       });
       
@@ -628,14 +707,12 @@ export default function HealthOS() {
       logActivity("AI query answered", text.substring(0, 40), "#006C5B");
     } catch (e) {
       console.error('Chat error:', e);
-      // Fallback to local response
-      const { content, citations } = genAIResponse(text, sources);
-      const aiMsg = { id: Date.now() + 1, role: "ai", content, citations, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      const aiMsg = { id: Date.now() + 1, role: "ai", content: "Sorry, something went wrong. Please try again.", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
       setMessages(p => [...p, aiMsg]);
     }
     
     setGenerating(false);
-  }, [chatInput, sources, logActivity, toast]);
+  }, [chatInput, messages, chatDepth, sources, logActivity, toast]);
 
   const clearChat = useCallback(() => {
     setConfirm({ msg: "Clear all chat history? This cannot be undone.", onYes: () => { setMessages([]); setConfirm(null); toast("Chat cleared", "warn"); }, onNo: () => setConfirm(null) });
@@ -644,15 +721,39 @@ export default function HealthOS() {
   const regenerateLast = useCallback(async () => {
     const lastUser = [...messages].reverse().find(m => m.role === "user");
     if (!lastUser) return;
-    setMessages(p => p.filter(m => !(m.role === "ai" && m.id === Math.max(...p.filter(x => x.role === "ai").map(x => x.id)))));
+    // Remove last AI response
+    const lastAiId = Math.max(...messages.filter(x => x.role === "ai").map(x => x.id));
+    const filtered = messages.filter(m => !(m.role === "ai" && m.id === lastAiId));
+    setMessages(filtered);
     setGenerating(true);
-    await new Promise(r => setTimeout(r, 1800));
-    const { content, citations } = genAIResponse(lastUser.content, sources);
-    const aiMsg = { id: Date.now(), role: "ai", content, citations, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
-    setMessages(p => [...p, aiMsg]);
+    
+    try {
+      const history = filtered.slice(-10).map(m => ({
+        role: m.role === "ai" ? "assistant" : "user",
+        content: m.content
+      }));
+      const response = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: lastUser.content,
+          notebook_id: 'default',
+          history: history.slice(0, -1),
+          depth: chatDepth
+        })
+      });
+      if (!response.ok) throw new Error('Regenerate failed');
+      const data = await response.json();
+      const aiMsg = { id: Date.now(), role: "ai", content: data.response, citations: data.citations || [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      setMessages(p => [...p, aiMsg]);
+    } catch (e) {
+      console.error('Regenerate error:', e);
+      const aiMsg = { id: Date.now(), role: "ai", content: "Sorry, regeneration failed. Please try again.", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      setMessages(p => [...p, aiMsg]);
+    }
     setGenerating(false);
     toast("Response regenerated");
-  }, [messages, sources, toast]);
+  }, [messages, chatDepth, toast]);
 
   const pinMessage = useCallback((id) => {
     setMessages(p => p.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m));
@@ -2304,14 +2405,36 @@ export default function HealthOS() {
                     <button onClick={() => setModal("upload")} style={{ marginTop: 4, padding: "9px 20px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("uploadSource")}</button>
                   </div>
                 )}
+                {messages.length === 0 && indexedSources.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 14 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="sparkle" size={24} /></div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>What would you like to do?</div>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", maxWidth: 360 }}>I can translate, summarize, analyze, compare, or answer questions about your {indexedSources.length} indexed source{indexedSources.length !== 1 ? 's' : ''}.</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 500, marginTop: 6 }}>
+                      {[
+                        { label: "Translate to Arabic", icon: "globe", prompt: "Translate all source content to Arabic" },
+                        { label: "Translate to English", icon: "globe", prompt: "Translate all source content to English" },
+                        { label: "Summarize sources", icon: "book", prompt: "Summarize all my sources in a comprehensive overview" },
+                        { label: "Key findings", icon: "lightbulb", prompt: "What are the key findings across all sources?" },
+                        { label: "Compare sources", icon: "chart", prompt: "Compare and contrast the main points across my sources" },
+                        { label: "Extract action items", icon: "check", prompt: "Extract all action items, deliverables, and next steps from the sources" },
+                      ].map((chip) => (
+                        <button key={chip.label} data-testid={`chat-chip-${chip.label.replace(/\s/g,'-').toLowerCase()}`} onClick={() => sendMessage(chip.prompt)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 20, background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-strong)'; e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary-border-medium)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                        ><Ic n={chip.icon} size={12} /> {chip.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {messages.map(m => (
                   <div key={m.id} className="ani" style={{ marginBottom: 18, display: "flex", gap: 10, flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: m.role === "ai" ? "var(--gradient)" : "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: m.role === "ai" ? "white" : "var(--text-secondary)", flexShrink: 0 }}>
                       <Ic n={m.role === "ai" ? "sparkle" : "user"} size={13} />
                     </div>
                     <div style={{ maxWidth: "74%" }}>
-                      <div style={{ background: m.role === "user" ? "var(--primary)" : "var(--bg-chat-ai)", color: m.role === "user" ? "white" : "var(--text-primary)", borderRadius: m.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", padding: "11px 14px", fontSize: 12, lineHeight: 1.7, boxShadow: "var(--shadow-sm)", border: m.role === "ai" ? "1px solid var(--border)" : "none", whiteSpace: "pre-wrap" }}>
-                        {m.content}
+                      <div style={{ background: m.role === "user" ? "var(--primary)" : "var(--bg-chat-ai)", color: m.role === "user" ? "white" : "var(--text-primary)", borderRadius: m.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", padding: "11px 14px", fontSize: 12, lineHeight: 1.7, boxShadow: "var(--shadow-sm)", border: m.role === "ai" ? "1px solid var(--border)" : "none", whiteSpace: m.role === "user" ? "pre-wrap" : "normal" }}>
+                        {m.role === "ai" ? <MdText text={m.content} /> : m.content}
                       </div>
                       {m.citations && m.citations.length > 0 && (
                         <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>

@@ -1073,9 +1073,15 @@ async def generate_single_image(request: GenerateImageRequest):
 
 # ─── CHAT WITH SOURCES ──────────────────────────────────────────────────────
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
     message: str
     notebook_id: str = "default"
+    history: List[ChatMessage] = []
+    depth: str = "balanced"
 
 class ChatResponse(BaseModel):
     response: str
@@ -1083,7 +1089,7 @@ class ChatResponse(BaseModel):
 
 @api_router.post("/chat", response_model=ChatResponse)
 async def chat_with_sources(request: ChatRequest):
-    """Chat with AI about the indexed sources"""
+    """Chat with AI about the indexed sources — supports translation, analysis, and multi-turn conversation"""
     
     # Get all indexed sources
     sources = await db.sources.find(
@@ -1103,28 +1109,61 @@ async def chat_with_sources(request: ChatRequest):
         combined_content += f"\n\n--- SOURCE: {src['title']} ---\n{src.get('content', '')[:8000]}"
     combined_content = combined_content[:35000]
     
-    prompt = f"""You are a research assistant with access to the following sources:
-
-{combined_content}
-
-USER QUESTION: {request.message}
-
-Based ONLY on the sources provided above, answer the user's question.
-- Cite specific sources when making claims
-- If information isn't in the sources, say so
-- Be thorough but concise
-- Use markdown formatting for clarity"""
-
-    response = await generate_with_ai(prompt, "You are an expert research assistant. Answer questions based only on provided sources.")
+    # Build conversation history context
+    history_text = ""
+    if request.history:
+        recent = request.history[-10:]  # Last 10 messages for context
+        history_text = "\n\nCONVERSATION HISTORY:\n"
+        for msg in recent:
+            role_label = "USER" if msg.role == "user" else "ASSISTANT"
+            history_text += f"{role_label}: {msg.content[:500]}\n"
     
-    # Extract citations (simple approach - list sources mentioned)
+    # Depth-specific instructions
+    depth_instructions = {
+        "fast": "Be concise and direct. Give a short, focused answer in 2-4 sentences. Skip unnecessary detail.",
+        "balanced": "Provide a clear, well-structured answer with moderate detail. Use bullet points or short paragraphs.",
+        "deep": "Provide a thorough, comprehensive answer with detailed analysis, examples, and cross-references between sources. Be as detailed as possible."
+    }
+    depth_note = depth_instructions.get(request.depth, depth_instructions["balanced"])
+    
+    prompt = f"""You are a powerful research assistant with full access to the user's source documents.
+
+SOURCE DOCUMENTS:
+{combined_content}
+{history_text}
+
+USER REQUEST: {request.message}
+
+RESPONSE DEPTH: {depth_note}
+
+CAPABILITIES — You can and should handle ALL of the following when asked:
+1. **Translation**: Translate source content to ANY language the user requests (Arabic, English, French, Spanish, etc.). Translate accurately and naturally, preserving meaning and formatting. When translating, output the translated text directly.
+2. **Summarization**: Summarize individual sources or all sources together.
+3. **Analysis & Comparison**: Compare sources, identify patterns, contradictions, or gaps.
+4. **Extraction**: Pull out specific data, statistics, key terms, or quotes from sources.
+5. **Q&A**: Answer factual questions grounded in the source content.
+6. **Reformatting**: Convert content into tables, bullet points, numbered lists, or other formats.
+7. **Writing**: Draft new content (emails, reports, briefs) based on source material.
+
+RULES:
+- When the user asks you to translate, DO translate the content. Do not refuse or say you cannot.
+- Cite specific source names when referencing information.
+- If information is not in the sources, say so clearly.
+- Use markdown formatting: **bold**, *italic*, bullet points, numbered lists, headers.
+- Maintain conversation continuity — reference prior messages when relevant."""
+
+    system_msg = "You are an expert multilingual research assistant. You translate, analyze, summarize, compare, and answer questions about source documents. You support all languages."
+    
+    response = await generate_with_ai(prompt, system_msg)
+    
+    # Extract citations
     citations = []
     for src in sources:
         if src['title'].lower() in response.lower():
             citations.append(src['title'])
     
     if not citations and sources:
-        citations = [sources[0]['title']]  # Default to first source
+        citations = [sources[0]['title']]
     
     return ChatResponse(
         response=response,
