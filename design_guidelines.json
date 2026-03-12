@@ -1,0 +1,141 @@
+{
+  "theme_name": "Saudi Healthcare Command",
+  "version": "1.0",
+  "type": "Dark Mode Professional",
+  
+  "brand_identity": {
+    "core_concept": "Authoritative, Visionary, Secure, Efficient",
+    "primary_color": "#006C5B",
+    "primary_color_name": "Saudi Green",
+    "accent_color": "#C8A86B",
+    "accent_color_name": "Royal Gold",
+    "background_style": "Aerial Night Cityscape with Heavy Dark Overlay",
+    "font_family_primary": "DIN Next LT Arabic, Cairo, sans-serif",
+    "font_family_secondary": "Inter, sans-serif"
+  },
+
+  "colors": {
+    "background": {
+      "base": "#0f172a", 
+      "overlay": "rgba(2, 6, 23, 0.85)",
+      "surface": "rgba(255, 255, 255, 0.03)",
+      "surface_hover": "rgba(255, 255, 255, 0.08)"
+    },
+    "text": {
+      "primary": "#f8fafc",
+      "secondary": "#94a3b8",
+      "accent": "#C8A86B",
+      "brand": "#006C5B"
+    },
+    "border": {
+      "default": "rgba(255, 255, 255, 0.1)",
+      "highlight": "#C8A86B",
+      "subtle": "rgba(255, 255, 255, 0.05)"
+    },
+    "status": {
+      "success": "#006C5B",
+      "warning": "#C8A86B",
+      "error": "#ef4444",
+      "info": "#3b82f6"
+    }
+  },
+
+  "typography": {
+    "headings": {
+      "font": "Cairo, DIN Next LT Arabic, sans-serif",
+      "weight": "700",
+      "letter_spacing": "tracking-wide",
+      "color": "text-white"
+    },
+    "body": {
+      "font": "Inter, sans-serif",
+      "weight": "400",
+      "color": "text-slate-300"
+    },
+    "notes": "Use Google Font 'Cairo' as a fallback for DIN Next Arabic. Import it in index.css if possible."
+  },
+
+  "layout": {
+    "structure": "Single Page App Dashboard",
+    "grid_system": "Bento Grid (CSS Grid)",
+    "containers": {
+      "main_wrapper": "flex h-screen w-full overflow-hidden bg-slate-950 text-slate-100",
+      "sidebar": "w-64 flex-shrink-0 border-r border-white/10 bg-slate-950/60 backdrop-blur-xl flex flex-col",
+      "main_content": "flex-1 overflow-y-auto p-6 relative z-10",
+      "right_panel": "w-80 flex-shrink-0 border-l border-white/10 bg-slate-950/60 backdrop-blur-xl flex flex-col",
+      "header": "h-16 border-b border-white/10 bg-slate-950/60 backdrop-blur-xl flex items-center px-6 justify-between sticky top-0 z-50"
+    },
+    "spacing": {
+      "section_gap": "gap-6",
+      "card_padding": "p-5"
+    }
+  },
+
+  "components": {
+    "cards": {
+      "base": "rounded-xl border border-white/10 bg-white/5 backdrop-blur-md shadow-lg transition-all duration-300",
+      "hover": "hover:bg-white/10 hover:border-accent/50 hover:shadow-accent/10 hover:-translate-y-1",
+      "active": "ring-1 ring-accent bg-white/10"
+    },
+    "buttons": {
+      "primary": "bg-[#006C5B] hover:bg-[#005a4b] text-white font-medium px-4 py-2 rounded-lg shadow-lg shadow-emerald-900/20 transition-all active:scale-95 border border-white/10",
+      "secondary": "bg-transparent border border-[#C8A86B] text-[#C8A86B] hover:bg-[#C8A86B]/10 px-4 py-2 rounded-lg transition-all",
+      "ghost": "hover:bg-white/5 text-slate-300 hover:text-white px-3 py-2 rounded-md transition-colors",
+      "icon": "h-9 w-9 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+    },
+    "inputs": {
+      "base": "bg-slate-950/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent/50 transition-all"
+    },
+    "glass_panels": {
+      "heavy": "bg-slate-950/80 backdrop-blur-2xl border border-white/10",
+      "medium": "bg-slate-900/60 backdrop-blur-xl border border-white/10",
+      "light": "bg-white/5 backdrop-blur-md border border-white/10"
+    }
+  },
+
+  "visual_enhancers": {
+    "background_image_url": "https://images.unsplash.com/photo-1727540419428-7ace2a2a4915?q=80&w=2574&auto=format&fit=crop",
+    "gradients": {
+      "gold_glow": "bg-gradient-to-r from-[#C8A86B]/20 to-transparent",
+      "green_glow": "bg-gradient-to-b from-[#006C5B]/20 to-transparent"
+    },
+    "effects": {
+      "noise": "pointer-events-none fixed inset-0 z-50 opacity-[0.03] mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]",
+      "glass_highlight": "absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+    }
+  },
+
+  "charts": {
+    "palette": ["#006C5B", "#C8A86B", "#0ea5e9", "#64748b", "#f8fafc"],
+    "library": "Recharts",
+    "style": "Minimal, Donut with thin stroke, Dark tooltip bg"
+  },
+
+  "instructions_to_main_agent": [
+    "1. Replace the entire content of NotebookLM_Workspace.jsx with the new design structure.",
+    "2. Ensure the background image covers the full viewport with a heavy dark overlay to ensure text readability.",
+    "3. Use Lucide-React icons for all iconography.",
+    "4. Implement the Bento Grid layout for the 'Overview' section.",
+    "5. Use 'Cairo' font from Google Fonts. Add import to index.css: @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&family=Inter:wght@300;400;500;600&display=swap');",
+    "6. Apply glassmorphism to all panels (Sidebar, Right Panel, Cards).",
+    "7. Use the primary color #006C5B for primary actions and key data points.",
+    "8. Use the accent color #C8A86B for highlights, borders, and secondary actions.",
+    "9. Maintain all functional requirements: Source management, Chat, Studio outputs.",
+    "10. Ensure RTL readiness in structure (though UI is English, use flex-start/end logically).",
+    "11. Do NOT delete any logic hooks or state variables. Re-integrate them into the new UI.",
+    "12. All interactive elements must have data-testid attributes.",
+    "13. Add the noise texture overlay for a premium filmic grain effect."
+  ],
+
+  "universal_guidelines": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: transition: all.",
+    "Every interaction needs micro-animations - hover states, transitions.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures, noise overlays, custom cursors.",
+    "Main agent relies on these image URLs. Missing categories = main agent will use placeholder text which is FORBIDDEN"
+  ]
+}
