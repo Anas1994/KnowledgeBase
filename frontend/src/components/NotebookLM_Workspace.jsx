@@ -707,7 +707,7 @@ export default function HealthOS() {
       logActivity("AI query answered", text.substring(0, 40), "#006C5B");
     } catch (e) {
       console.error('Chat error:', e);
-      const aiMsg = { id: Date.now() + 1, role: "ai", content: "Sorry, something went wrong. Please try again.", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      const aiMsg = { id: Date.now() + 1, role: "ai", content: "Something went wrong while processing your request. This could be a temporary issue — please try again. If it persists, your LLM key balance may need to be topped up (Profile > Universal Key > Add Balance).", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
       setMessages(p => [...p, aiMsg]);
     }
     

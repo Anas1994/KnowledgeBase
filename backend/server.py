@@ -236,8 +236,11 @@ async def generate_with_ai(prompt: str, system_message: str = "You are an expert
         response = await chat.send_message(user_message)
         return response
     except Exception as e:
-        logger.error(f"AI generation error: {e}")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+        error_str = str(e)
+        logger.error(f"AI generation error: {error_str}")
+        if "Budget has been exceeded" in error_str or "budget" in error_str.lower():
+            raise HTTPException(status_code=402, detail="LLM budget exceeded. Please go to Profile > Universal Key > Add Balance to top up.")
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {error_str}")
 
 async def generate_slide_image(slide_title: str, slide_content: str, layout_type: str, theme: str, image_keyword: str = "") -> Optional[str]:
     """Generate a professional, contextually relevant image for a slide using AI"""
@@ -1103,16 +1106,21 @@ async def chat_with_sources(request: ChatRequest):
             citations=[]
         )
     
-    # Combine source content
+    # Detect if this is a translation request (needs more content but simpler prompt)
+    msg_lower = request.message.lower()
+    is_translation = any(kw in msg_lower for kw in ['translate', 'ترجم', 'translation', 'ترجمة'])
+    
+    # Combine source content — keep it manageable to avoid API timeouts
+    per_source_limit = 3000
     combined_content = ""
     for src in sources:
-        combined_content += f"\n\n--- SOURCE: {src['title']} ---\n{src.get('content', '')[:8000]}"
-    combined_content = combined_content[:35000]
+        combined_content += f"\n\n--- SOURCE: {src['title']} ---\n{src.get('content', '')[:per_source_limit]}"
+    combined_content = combined_content[:15000]
     
     # Build conversation history context
     history_text = ""
     if request.history:
-        recent = request.history[-10:]  # Last 10 messages for context
+        recent = request.history[-10:]
         history_text = "\n\nCONVERSATION HISTORY:\n"
         for msg in recent:
             role_label = "USER" if msg.role == "user" else "ASSISTANT"
@@ -1154,7 +1162,20 @@ RULES:
 
     system_msg = "You are an expert multilingual research assistant. You translate, analyze, summarize, compare, and answer questions about source documents. You support all languages."
     
-    response = await generate_with_ai(prompt, system_msg)
+    try:
+        response = await generate_with_ai(prompt, system_msg)
+    except HTTPException as he:
+        # Return budget or error messages to the frontend clearly
+        error_msg = he.detail if he.detail else "AI generation failed"
+        if he.status_code == 402:
+            return ChatResponse(
+                response=f"**LLM Budget Exceeded**\n\nYour Universal Key balance has run out. Please go to **Profile > Universal Key > Add Balance** to top up, or enable **Auto Top-Up** so this doesn't happen again.",
+                citations=[]
+            )
+        return ChatResponse(
+            response=f"An error occurred: {error_msg}\n\nPlease try again in a moment.",
+            citations=[]
+        )
     
     # Extract citations
     citations = []
