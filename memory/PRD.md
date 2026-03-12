@@ -3,8 +3,8 @@
 ## Original Problem Statement
 Build an AI-powered research workspace (NotebookLM-style) that allows users to upload source documents (TXT, PDF, DOCX), chat with an AI that uses these sources for context, and generate complex outputs like multi-slide PPTX presentations and infographics.
 
-### Phase 2: Saudi Healthcare Command Theme → Light Saudi Vision 2030 Theme
-Transform the entire UI into a clean, professional light theme inspired by Saudi Vision 2030 with Saudi Green (#006C5B) and Gold (#C8A86B) accents. Add English/Arabic localization with full RTL support.
+### Phase 2: Saudi Healthcare Command Theme + Light Saudi Vision Theme + Localization + Theme Toggle
+Transform the entire UI into dual themes: a dark "Saudi Healthcare Command" theme (dark navy with Riyadh cityscape overlay) and a light "Saudi Vision 2030" theme (clean white with Saudi Green and Gold accents). Add English/Arabic localization with full RTL support. Implement a theme toggle button to switch between both themes dynamically.
 
 ## Architecture
 ```
@@ -15,11 +15,13 @@ Transform the entire UI into a clean, professional light theme inspired by Saudi
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
-│   │   │   └── NotebookLM_Workspace.jsx  # Main UI component
+│   │   │   └── NotebookLM_Workspace.jsx  # Main UI component (~2600 lines)
+│   │   ├── theme/
+│   │   │   └── ThemeContext.js            # React theme context (isDark/toggleTheme)
 │   │   ├── i18n/
 │   │   │   ├── translations.js           # EN/AR dictionaries (200+ keys)
 │   │   │   └── LanguageContext.js         # React language context
-│   │   ├── App.js
+│   │   ├── App.js                        # Root with ThemeProvider + LanguageProvider
 │   │   └── App.css
 │   └── package.json
 └── memory/
@@ -46,14 +48,27 @@ Transform the entire UI into a clean, professional light theme inspired by Saudi
 - Dark text (#1A1F36, #6B7285) on light backgrounds
 - Cairo + Inter typography via Google Fonts
 - "HealthOS" branding with Saudi Green accent
-- No glass-morphism or dark overlays - clean and professional
+
+### Dark Saudi Healthcare Command Theme (Feb 2026)
+- Dark navy (#0A1628) background with Riyadh cityscape overlay
+- Semi-transparent cards with glass-morphism effect
+- Gold (#C8A86B) accent colors on dark surfaces
+- Light text (#f8fafc, #94a3b8) on dark backgrounds
+- Noise texture overlay for depth
 
 ### English/Arabic Localization (Feb 2026)
 - Complete EN/AR translation dictionary (200+ keys)
 - React LanguageContext with `useLanguage` hook
 - Language toggle button in top nav (EN/ع)
 - Full RTL layout support (dir="rtl" on root)
-- All UI sections translated: nav, sidebar, KPIs, cards, modals, studio tools, chat, notes
+- All UI sections translated
+
+### Theme Toggle (Feb 2026)
+- ThemeContext with isDark state and toggleTheme function
+- Sun/moon icon button in nav bar
+- 60+ CSS custom properties per theme (backgrounds, text, borders, shadows, accents)
+- All inline styles use CSS variables for theme-responsive colors
+- Both themes fully tested (100% pass rate, 23 tests)
 
 ## Key API Endpoints
 - `POST /api/upload` - Upload and process source documents
@@ -78,7 +93,7 @@ Transform the entire UI into a clean, professional light theme inspired by Saudi
 ## Prioritized Backlog
 
 ### P1 - Improvements
-1. Break down NotebookLM_Workspace.jsx into smaller components
+1. Break down NotebookLM_Workspace.jsx into smaller components (~2600 lines)
 2. Add more file type support (XLSX)
 3. User authentication
 
