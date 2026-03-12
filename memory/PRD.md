@@ -1,7 +1,7 @@
 # HealthOS - Health Intelligence Workspace
 
 ## Original Problem Statement
-Build an AI-powered research workspace (NotebookLM-style) with source document upload, AI chat, and output generation. Enhanced with Saudi-themed dual themes, localization, and professional infographic generation.
+Build an AI-powered research workspace with source document upload, AI chat, and output generation. Enhanced with Saudi-themed dual themes, localization, extended file support, and professional infographic generation.
 
 ## What's Been Implemented
 
@@ -26,15 +26,21 @@ Build an AI-powered research workspace (NotebookLM-style) with source document u
 - PDF, DOCX, TXT (existing)
 
 ### Enhanced Infographic Generation (Feb 2026)
-- **Canvas Renderer**: Professional 2-column card layout with:
-  - Gradient header with title, subtitle, gold divider, section badges
-  - Cards: colored left borders, numbered badges, icon shapes, word-wrapped bullets
-  - Dynamic height calculation per card based on content
-  - 12 geometric icon types (chart, users, clock, target, shield, globe, etc.)
-  - Saudi-themed footer
+- **Canvas Renderer** (1400px wide, dynamic height):
+  - Gradient header with title, gold diamond divider, section badges, color indicators
+  - 2-column card grid with colored left borders, numbered badges
+  - **Donut charts** for percentage-based stats with gradient arcs + progress bars
+  - **Workflow diagrams** for process types (connected numbered circles with arrows)
+  - **Horizontal bar charts** for comparison data with gradient fills + shine effects
+  - **Mini vertical bar charts** for numeric stats with gradient fills
+  - 12 geometric icon types with glow background circles
+  - Timeline dots on left margin connecting rows
+  - Dynamic card height calculation based on content
+  - Word-wrapped bullets with colored dot markers
+  - Subtle dot grid pattern background
+  - Professional footer with gold accent line
 - **Visual Preview**: Modal shows infographic as styled card grid (not raw text)
-- **AI Prompt**: Enhanced to generate 4 bullets per section, icons, stat labels
-- Export: 1200px wide PNG, dynamic height
+- **AI Prompt**: Requests diverse visualTypes (process, stat, comparison) + percentage stats
 
 ## Key API Endpoints
 - `POST /api/sources/upload` — Upload docs (PDF, DOCX, TXT, XLSX, PPTX, images)
@@ -55,7 +61,7 @@ Build an AI-powered research workspace (NotebookLM-style) with source document u
 
 ## Prioritized Backlog
 ### P1
-1. Break down NotebookLM_Workspace.jsx (~2700 lines)
+1. Break down NotebookLM_Workspace.jsx (~2800 lines) into smaller components
 2. User authentication
 3. Persist theme preference in localStorage
 
