@@ -102,8 +102,8 @@ const Confirm = ({ msg, onYes, onNo }) => (
     <div style={{ background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 20, padding: 28, width: 380, boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 20 }}>{msg}</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button onClick={onNo} style={{ padding: "8px 20px", borderRadius: 9, background: "rgba(255,255,255,0.03)", color: "#94a3b8", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Cancel</button>
-        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "#EF4444", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Delete</button>
+        <button onClick={onNo} style={{ padding: "8px 20px", borderRadius: 9, background: "rgba(255,255,255,0.03)", color: "#94a3b8", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{cancelLabel || "Cancel"}</button>
+        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "#EF4444", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{confirmLabel || "Delete"}</button>
       </div>
     </div>
   </div>
@@ -246,15 +246,15 @@ const INIT_NOTES = [
   { id: 1, title: "Key Takeaways on Scaling", content: "The Chinchilla paper fundamentally shifted how we think about compute-optimal training. Key insight: model size and dataset size should scale equally, not model size alone.", created: "Mar 9", pinned: true },
 ];
 const STUDIO_TOOLS = [
-  { id: "audio",      label: "Audio Overview",  icon: "audio",   desc: "AI podcast from sources",   color: "#006C5B", ext: "mp3" },
-  { id: "slides",     label: "Slide Deck",       icon: "slides",  desc: "Auto-generate slides",      color: "#0ea5e9", ext: "pptx" },
-  { id: "video",      label: "Video Script",     icon: "video",   desc: "Explainer video script",    color: "#C8A86B", ext: "txt" },
-  { id: "mindmap",    label: "Mind Map",         icon: "mindmap", desc: "Visual knowledge graph",    color: "#22C55E", ext: "svg" },
-  { id: "report",     label: "Research Report",  icon: "report",  desc: "Structured full report",    color: "#F59E0B", ext: "pdf" },
-  { id: "flashcards", label: "Flashcards",       icon: "cards",   desc: "Study Q&A cards",           color: "#EF4444", ext: "json" },
-  { id: "quiz",       label: "Quiz",             icon: "quiz",    desc: "MCQ, T/F, short answer",    color: "#0ea5e9", ext: "json" },
-  { id: "infographic",label: "Infographic",      icon: "chart",   desc: "Visual data summary",       color: "#C026D3", ext: "svg" },
-  { id: "datatable",  label: "Data Table",       icon: "table",   desc: "Structured extraction",     color: "#22C55E", ext: "csv" },
+  { id: "audio",      label: "Audio Overview",  labelKey: "audioOverview",     icon: "audio",   desc: "AI podcast from sources",   descKey: "audioOverviewDesc",     color: "#006C5B", ext: "mp3" },
+  { id: "slides",     label: "Slide Deck",       labelKey: "slideDeck",        icon: "slides",  desc: "Auto-generate slides",      descKey: "slideDeckDesc",         color: "#0ea5e9", ext: "pptx" },
+  { id: "video",      label: "Video Script",     labelKey: "videoScript",      icon: "video",   desc: "Explainer video script",    descKey: "videoScriptDesc",       color: "#C8A86B", ext: "txt" },
+  { id: "mindmap",    label: "Mind Map",         labelKey: "mindMap",          icon: "mindmap", desc: "Visual knowledge graph",    descKey: "mindMapDesc",           color: "#22C55E", ext: "svg" },
+  { id: "report",     label: "Research Report",  labelKey: "researchReport",   icon: "report",  desc: "Structured full report",    descKey: "researchReportDesc",    color: "#F59E0B", ext: "pdf" },
+  { id: "flashcards", label: "Flashcards",       labelKey: "flashcards",       icon: "cards",   desc: "Study Q&A cards",           descKey: "flashcardsDesc",        color: "#EF4444", ext: "json" },
+  { id: "quiz",       label: "Quiz",             labelKey: "quiz",             icon: "quiz",    desc: "MCQ, T/F, short answer",    descKey: "quizDesc",              color: "#0ea5e9", ext: "json" },
+  { id: "infographic",label: "Infographic",      labelKey: "infographic",      icon: "chart",   desc: "Visual data summary",       descKey: "infographicDesc",       color: "#C026D3", ext: "svg" },
+  { id: "datatable",  label: "Data Table",       labelKey: "dataTable",        icon: "table",   desc: "Structured extraction",     descKey: "dataTableDesc",         color: "#22C55E", ext: "csv" },
 ];
 const ACTIVITY_LOG_INIT = [
   { id: 1, action: "Source indexed",    detail: "Transformer Deep Dive",          time: "2h ago",  color: "#22C55E" },
@@ -1910,9 +1910,9 @@ export default function HealthOS() {
                         <span style={{ fontSize: 9, color: "#64748b" }}>{m.time}</span>
                         {m.role === "ai" && (
                           <>
-                            <button onClick={() => pinMessage(m.id)} title="Pin" style={{ background: "none", border: "none", cursor: "pointer", color: m.pinned ? "#006C5B" : "#64748b", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="pin" size={10} /> Pin</button>
+                            <button onClick={() => pinMessage(m.id)} title={t("pin")} style={{ background: "none", border: "none", cursor: "pointer", color: m.pinned ? "#006C5B" : "#64748b", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="pin" size={10} /> {t("pin")}</button>
                             <button onClick={() => saveToNotes(m)} title="Save to notes" style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="save" size={10} /> Save</button>
-                            <button onClick={() => { navigator.clipboard?.writeText(m.content); toast("Copied!"); }} title="Copy" style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="copy" size={10} /> Copy</button>
+                            <button onClick={() => { navigator.clipboard?.writeText(m.content); toast(t("copied")); }} title={t("copy")} style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="copy" size={10} /> {t("copy")}</button>
                           </>
                         )}
                       </div>
@@ -1941,7 +1941,7 @@ export default function HealthOS() {
                     </button>
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 6, textAlign: "center" }}>Grounded in {indexedSources.length} indexed source{indexedSources.length !== 1 ? "s" : ""} · Powered by Health AI · Shift+Enter for new line</div>
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 6, textAlign: "center" }}>{t("groundedIn")} {indexedSources.length} {indexedSources.length !== 1 ? t("indexedSources") : t("indexedSource")} · {t("poweredBy")} · {t("shiftEnter")}</div>
               </div>
             </div>
           )}
@@ -1959,7 +1959,7 @@ export default function HealthOS() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 9, padding: "6px 12px", border: "1px solid rgba(255,255,255,.08)" }}>
                     <Ic n="search" size={13} stroke="#64748b" />
-                    <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search sources…" style={{ fontSize: 12, color: "#f8fafc", width: 180 }} />
+                    <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder={t("searchSources")} style={{ fontSize: 12, color: "#f8fafc", width: 180 }} />
                   </div>
                   <button onClick={() => setModal("upload")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
                     <Ic n="plus" size={13} /> Add Source
@@ -2035,10 +2035,10 @@ export default function HealthOS() {
                         ? <div className="spin" style={{ width: 14, height: 14, border: `2px solid ${tool.color}40`, borderTop: `2px solid ${tool.color}`, borderRadius: "50%" }} />
                         : <Ic n={tool.icon} size={18} />}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 3 }}>{tool.label}</div>
-                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{tool.desc}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 3 }}>{t(tool.labelKey)}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{t(tool.descKey)}</div>
                     {genTool === tool.id && (
-                      <div style={{ position: "absolute", bottom: 12, right: 12, fontSize: 10, color: tool.color, fontWeight: 700 }}>Generating…</div>
+                      <div style={{ position: "absolute", bottom: 12, right: 12, fontSize: 10, color: tool.color, fontWeight: 700 }}>{t("generating")}</div>
                     )}
                   </div>
                 ))}
@@ -2051,8 +2051,8 @@ export default function HealthOS() {
                 {outputs.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "28px 0", color: "#64748b" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>🎨</div>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>No outputs yet</div>
-                    <div style={{ fontSize: 11, marginTop: 4 }}>Click any tool above to generate your first output</div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{t("noOutputsYetStudio")}</div>
+                    <div style={{ fontSize: 11, marginTop: 4 }}>{t("clickToolAbove")}</div>
                   </div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 10 }}>
@@ -2115,8 +2115,8 @@ export default function HealthOS() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span style={{ fontSize: 10, color: "#64748b" }}>{n.created}</span>
                         <div style={{ display: "flex", gap: 5 }}>
-                          <button onClick={e => { e.stopPropagation(); openNoteEditor(n); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(0,108,91,0.15)", color: "#006C5B", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>Edit</button>
-                          <button onClick={e => { e.stopPropagation(); deleteNote(n.id); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>Delete</button>
+                          <button onClick={e => { e.stopPropagation(); openNoteEditor(n); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(0,108,91,0.15)", color: "#006C5B", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("edit")}</button>
+                          <button onClick={e => { e.stopPropagation(); deleteNote(n.id); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("delete")}</button>
                         </div>
                       </div>
                     </div>
@@ -2146,7 +2146,7 @@ export default function HealthOS() {
                     <div style={{ color: tool.color, display: "flex", justifyContent: "center", marginBottom: 5 }}>
                       {genTool === tool.id ? <div className="spin" style={{ width: 14, height: 14, border: `2px solid ${tool.color}40`, borderTop: `2px solid ${tool.color}`, borderRadius: "50%" }} /> : <Ic n={tool.icon} size={16} />}
                     </div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#f8fafc" }}>{tool.label}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#f8fafc" }}>{t(tool.labelKey)}</div>
                   </div>
                 ))}
               </div>
@@ -2156,8 +2156,8 @@ export default function HealthOS() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{t("quickNote")}</span>
                   <button onClick={() => openNoteEditor()} style={{ color: "#006C5B", fontSize: 10, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("fullEditor")}</button>
                 </div>
-                <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder="Title…" style={{ width: "100%", fontSize: 11, fontWeight: 600, color: "#f8fafc", background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 6, padding: "5px 8px", border: "1px solid rgba(255,255,255,.08)", marginBottom: 5 }} />
-                <textarea value={noteBody} onChange={e => setNoteBody(e.target.value)} placeholder="Write a note…" rows={3} style={{ width: "100%", fontSize: 11, color: "#f8fafc", background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 6, padding: "5px 8px", border: "1px solid rgba(255,255,255,.08)", lineHeight: 1.5 }} />
+                <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder={t("title")} style={{ width: "100%", fontSize: 11, fontWeight: 600, color: "#f8fafc", background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 6, padding: "5px 8px", border: "1px solid rgba(255,255,255,.08)", marginBottom: 5 }} />
+                <textarea value={noteBody} onChange={e => setNoteBody(e.target.value)} placeholder={t("writeANote")} rows={3} style={{ width: "100%", fontSize: 11, color: "#f8fafc", background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 6, padding: "5px 8px", border: "1px solid rgba(255,255,255,.08)", lineHeight: 1.5 }} />
                 <button onClick={saveNote} style={{ width: "100%", marginTop: 7, padding: "6px 0", borderRadius: 7, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
               </div>
               {/* Recent outputs in rail */}
@@ -2306,7 +2306,7 @@ export default function HealthOS() {
                 {/* Collaborators */}
                 {collaborators.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: .7, marginBottom: 8 }}>Current collaborators</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: .7, marginBottom: 8 }}>{t("currentCollaborators")}</div>
                     {collaborators.map((c, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 9, background: "rgba(255,255,255,0.05)", marginBottom: 5, border: "1px solid rgba(255,255,255,.08)" }}>
                         <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{c.avatar}</div>
@@ -2325,11 +2325,11 @@ export default function HealthOS() {
                 )}
                 {/* Copy link */}
                 <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 14, border: "1px solid rgba(255,255,255,.08)" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: .7 }}>Share link</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 8, textTransform: "uppercase", letterSpacing: .7 }}>{t("shareLink")}</div>
                   <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <div style={{ flex: 1, background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#64748b", border: "1px solid rgba(255,255,255,.08)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shareLink}</div>
                     <button onClick={copyLink} style={{ padding: "0 14px", borderRadius: 8, background: linkCopied ? "#22C55E" : "#006C5B", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", transition: "background .3s", display: "flex", alignItems: "center", gap: 5 }}>
-                      <Ic n={linkCopied ? "check" : "copy"} size={12} /> {linkCopied ? "Copied!" : "Copy"}
+                      <Ic n={linkCopied ? "check" : "copy"} size={12} /> {linkCopied ? t("copied") : t("copyLink")}
                     </button>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -2348,17 +2348,17 @@ export default function HealthOS() {
           {modal === "note" && (
             <div style={{ background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 22, width: 600, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
               <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc" }}>{editNoteId ? "Edit Note" : "New Note"}</h3>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc" }}>{editNoteId ? t("editNote") : t("newNote")}</h3>
                 <button onClick={() => { setModal(null); setNoteTitle(""); setNoteBody(""); setEditNoteId(null); }} style={{ color: "#64748b", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
               </div>
               <div style={{ padding: 22 }}>
-                <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder="Note title…" style={{ width: "100%", fontSize: 16, fontWeight: 700, color: "#f8fafc", marginBottom: 14, padding: "8px 0", borderBottom: "2px solid rgba(255,255,255,.08)" }} />
-                <textarea value={noteBody} onChange={e => setNoteBody(e.target.value)} placeholder="Write your note here… You can use markdown formatting." rows={9} style={{ width: "100%", fontSize: 13, color: "#f8fafc", lineHeight: 1.75, background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,.08)", marginBottom: 16 }} />
+                <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder={t("noteTitle")} style={{ width: "100%", fontSize: 16, fontWeight: 700, color: "#f8fafc", marginBottom: 14, padding: "8px 0", borderBottom: "2px solid rgba(255,255,255,.08)" }} />
+                <textarea value={noteBody} onChange={e => setNoteBody(e.target.value)} placeholder={t("writeNote")} rows={9} style={{ width: "100%", fontSize: 13, color: "#f8fafc", lineHeight: 1.75, background: "rgba(255,255,255,0.05)", borderRadius: 12, padding: 16, border: "1px solid rgba(255,255,255,.08)", marginBottom: 16 }} />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>{noteBody.length} characters · {noteBody.split(/\s+/).filter(Boolean).length} words</div>
+                  <div style={{ fontSize: 11, color: "#64748b" }}>{noteBody.length} {t("characters")} · {noteBody.split(/\s+/).filter(Boolean).length} {t("words")}</div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => { setModal(null); setNoteTitle(""); setNoteBody(""); setEditNoteId(null); }} style={{ padding: "8px 18px", borderRadius: 9, background: "rgba(255,255,255,0.03)", color: "#94a3b8", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>Cancel</button>
-                    <button onClick={saveNote} style={{ padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Save Note</button>
+                    <button onClick={() => { setModal(null); setNoteTitle(""); setNoteBody(""); setEditNoteId(null); }} style={{ padding: "8px 18px", borderRadius: 9, background: "rgba(255,255,255,0.03)", color: "#94a3b8", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
+                    <button onClick={saveNote} style={{ padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
                   </div>
                 </div>
               </div>
@@ -2374,35 +2374,35 @@ export default function HealthOS() {
               </div>
               {/* Settings tabs */}
               <div style={{ display: "flex", padding: "8px 22px 0", borderBottom: "1px solid rgba(255,255,255,.08)", gap: 0 }}>
-                {[["general","General"],["sources","Sources"],["ai","AI Model"],["export","Export"]].map(([t, l]) => (
-                  <button key={t} onClick={() => setSettingsTab(t)} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, color: settingsTab === t ? "#006C5B" : "#64748b", background: "none", border: "none", borderBottom: `2px solid ${settingsTab === t ? "#006C5B" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
+                {[["general",t("general")],["sources",t("sources")],["ai",t("aiModel")],["export",t("export")]].map(([tab, l]) => (
+                  <button key={tab} onClick={() => setSettingsTab(tab)} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, color: settingsTab === tab ? "#006C5B" : "#64748b", background: "none", border: "none", borderBottom: `2px solid ${settingsTab === tab ? "#006C5B" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
                 ))}
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
                 {settingsTab === "general" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>Notebook Name</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>{t("notebookName")}</label>
                       <input value={notebookTitle} onChange={e => setNotebookTitle(e.target.value)} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,.08)", fontSize: 13, color: "#f8fafc", background: "rgba(255,255,255,0.05)" }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>Description</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>{t("description")}</label>
                       <textarea value={nbDescription} onChange={e => setNbDescription(e.target.value)} rows={3} style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,.08)", fontSize: 12, color: "#f8fafc", background: "rgba(255,255,255,0.05)", lineHeight: 1.6 }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>Visibility</label>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>{t("visibility")}</label>
                       <select value={nbVisibility} onChange={e => setNbVisibility(e.target.value)} style={{ padding: "9px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,.08)", fontSize: 12, color: "#f8fafc", background: "rgba(255,255,255,0.05)", width: "100%", cursor: "pointer" }}>
                         <option value="private">🔒 Private</option>
                         <option value="link">🔗 Anyone with link</option>
                         <option value="public">🌐 Public</option>
                       </select>
                     </div>
-                    <button onClick={() => { toast("Settings saved"); setModal(null); }} style={{ padding: "10px 0", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>Save Changes</button>
+                    <button onClick={() => { toast(t("settingsSaved")); setModal(null); }} style={{ padding: "10px 0", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveChanges")}</button>
                   </div>
                 )}
                 {settingsTab === "sources" && (
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#f8fafc", marginBottom: 12 }}>Manage Sources ({sources.length})</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#f8fafc", marginBottom: 12 }}>{t("manageSources")} ({sources.length})</div>
                     {sources.map(s => (
                       <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, background: "rgba(255,255,255,0.05)", marginBottom: 7, border: "1px solid rgba(255,255,255,.08)" }}>
                         <div style={{ width: 28, height: 28, borderRadius: 7, background: typeColor(s.type) + "18", display: "flex", alignItems: "center", justifyContent: "center", color: typeColor(s.type), flexShrink: 0 }}><Ic n={typeIcon(s.type)} size={13} /></div>
@@ -2424,7 +2424,7 @@ export default function HealthOS() {
                       </div>
                     ))}
                     <div style={{ padding: 12, borderRadius: 10, background: "rgba(0,108,91,0.15)", border: "1px solid rgba(0,108,91,0.3)" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#006C5B", marginBottom: 4 }}>Reasoning Depth</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#006C5B", marginBottom: 4 }}>{t("reasoningDepth")}</div>
                       <div style={{ display: "flex", gap: 7 }}>
                         {["fast", "balanced", "deep"].map(d => (
                           <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 11, fontWeight: 700, background: chatDepth === d ? "#006C5B" : "rgba(255,255,255,0.05)", color: chatDepth === d ? "white" : "#94a3b8", border: `1px solid ${chatDepth === d ? "#006C5B" : "rgba(255,255,255,.08)"}`, cursor: "pointer" }}>{d}</button>
@@ -2435,12 +2435,12 @@ export default function HealthOS() {
                 )}
                 {settingsTab === "export" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>Export your notebook data</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 4 }}>{t("exportAs")}</div>
                     {[
-                      { l: "Export as JSON", d: "Full notebook backup", i: "file", a: exportNotebook },
-                      { l: "Export Sources List", d: "CSV of all sources", i: "table", a: () => { toast("Exporting sources…"); } },
-                      { l: "Export Chat History", d: "Full conversation transcript", i: "activity", a: exportChat },
-                      { l: "Export All Outputs", d: "ZIP of generated content", i: "download", a: () => toast("Preparing ZIP…", "warn") },
+                      { l: t("exportJson"), d: t("fullBackup"), i: "file", a: exportNotebook },
+                      { l: t("exportSourcesList"), d: t("csvOfSources"), i: "table", a: () => { toast("Exporting sources..."); } },
+                      { l: t("exportChatHistory"), d: t("fullConversation"), i: "activity", a: exportChat },
+                      { l: t("exportAllOutputs"), d: t("zipContent"), i: "download", a: () => toast("Preparing ZIP...", "warn") },
                     ].map(({ l, d, i, a }) => (
                       <div key={l} onClick={a} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 11, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,.08)", cursor: "pointer", transition: "all .15s" }}
                         onMouseEnter={e => e.currentTarget.style.borderColor = "#006C5B"}
@@ -2454,8 +2454,8 @@ export default function HealthOS() {
                       </div>
                     ))}
                     <div style={{ marginTop: 8, padding: 14, borderRadius: 11, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#DC2626", marginBottom: 6 }}>Danger Zone</div>
-                      <button onClick={() => setConfirm({ msg: "Delete this entire notebook? All sources, outputs, and notes will be permanently deleted.", onYes: () => { toast("Notebook deleted", "error"); setConfirm(null); setModal(null); }, onNo: () => setConfirm(null) })} style={{ padding: "7px 16px", borderRadius: 8, background: "#EF4444", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>Delete Notebook</button>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#DC2626", marginBottom: 6 }}>{t("dangerZone")}</div>
+                      <button onClick={() => setConfirm({ msg: "Delete this entire notebook? All sources, outputs, and notes will be permanently deleted.", onYes: () => { toast("Notebook deleted", "error"); setConfirm(null); setModal(null); }, onNo: () => setConfirm(null) })} style={{ padding: "7px 16px", borderRadius: 8, background: "#EF4444", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("deleteNotebook")}</button>
                     </div>
                   </div>
                 )}
@@ -2521,8 +2521,8 @@ export default function HealthOS() {
             <div style={{ background: "rgba(15,23,42,0.95)", backdropFilter: "blur(24px)", borderRadius: 22, width: 360, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
               <div style={{ padding: "20px 22px", background: "linear-gradient(135deg,#0A1628,#0f172a)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="user" size={28} /></div>
-                <div style={{ color: "white", fontWeight: 800, fontSize: 15 }}>Healthcare Analyst</div>
-                <div style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>analyst@healthos.sa</div>
+                <div style={{ color: "white", fontWeight: 800, fontSize: 15 }}>{t("healthcareAnalyst")}</div>
+                <div style={{ color: "rgba(255,255,255,.45)", fontSize: 11 }}>{t("analystEmail")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                   {["Pro Plan", "Llama 3.1", "Weaviate"].map(t => (
                     <span key={t} style={{ padding: "3px 10px", borderRadius: 20, background: "rgba(0,108,91,.3)", color: "#C8A86B", fontSize: 10, fontWeight: 700 }}>{t}</span>
@@ -2530,15 +2530,15 @@ export default function HealthOS() {
                 </div>
               </div>
               <div style={{ padding: 18 }}>
-                {[["Notebooks Created", "12"], ["Total Sources", String(sources.length)], ["Outputs Generated", String(outputs.length)], ["AI Queries", String(messages.filter(m => m.role === "user").length)]].map(([l, v]) => (
+                {[[t("notebooksCreated"), "12"], [t("totalSourcesProfile"), String(sources.length)], [t("outputsGenerated"), String(outputs.length)], [t("aiQueries"), String(messages.filter(m => m.role === "user").length)]].map(([l, v]) => (
                   <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
                     <span style={{ fontSize: 11, color: "#64748b" }}>{l}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{v}</span>
                   </div>
                 ))}
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 14 }}>
-                  <button onClick={() => { setSettingsTab("general"); setModal("settings"); }} style={{ padding: "9px 0", borderRadius: 9, background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: 12, fontWeight: 600, border: "1px solid rgba(255,255,255,.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Ic n="settings" size={13} /> Account Settings</button>
-                  <button onClick={() => { setModal(null); toast("Logged out", "warn"); }} style={{ padding: "9px 0", borderRadius: 9, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Sign Out</button>
+                  <button onClick={() => { setSettingsTab("general"); setModal("settings"); }} style={{ padding: "9px 0", borderRadius: 9, background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: 12, fontWeight: 600, border: "1px solid rgba(255,255,255,.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Ic n="settings" size={13} /> {t("accountSettings")}</button>
+                  <button onClick={() => { setModal(null); toast(t("loggedOut"), "warn"); }} style={{ padding: "9px 0", borderRadius: 9, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("signOut")}</button>
                 </div>
               </div>
             </div>
