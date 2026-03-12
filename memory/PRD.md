@@ -10,6 +10,7 @@ Build a healthcare research workspace with dual-theme UI (Saudi Healthcare Comma
 - **Content Generation**: Slides, reports, mind maps, flashcards, quizzes, audio scripts, data tables, infographics
 - **Infographic Generation**: Contextually relevant visuals based on source content
 - **Slide Deck Generation**: Professional PPTX with AI-generated images, proper alignment, varied layouts
+- **Chat**: Multi-turn conversation with translation, summarization, analysis, comparison, markdown rendering
 
 ## Architecture
 - **Frontend**: React.js, Context API, CSS Custom Properties, HTML5 Canvas, pptxgenjs
@@ -17,7 +18,7 @@ Build a healthcare research workspace with dual-theme UI (Saudi Healthcare Comma
 - **Libraries**: openpyxl, python-pptx, Pillow, pypdf, python-docx, pptxgenjs, pdfjs-dist
 
 ## Key Files
-- `/app/frontend/src/components/NotebookLM_Workspace.jsx` - Main UI + Canvas renderer + PPTX builder
+- `/app/frontend/src/components/NotebookLM_Workspace.jsx` - Main UI + Canvas renderer + PPTX builder + MdText markdown renderer
 - `/app/backend/server.py` - API endpoints + AI generation logic
 - `/app/frontend/src/contexts/LanguageContext.jsx` - i18n
 - `/app/frontend/src/contexts/ThemeContext.jsx` - Theme toggle
@@ -31,18 +32,23 @@ Build a healthcare research workspace with dual-theme UI (Saudi Healthcare Comma
 - [x] English/Arabic localization with RTL
 - [x] Source upload: .docx, .pdf, .xlsx, .pptx, images
 - [x] All generation types: slides, report, mindmap, flashcards, quiz, audio, datatable, infographic
-- [x] Canvas-based infographic with contextual visual selection (Fixed Mar 12, 2026)
-- [x] Professional PPTX generation with AI images, proper alignment, teal/gold theme (Fixed Mar 12, 2026)
+- [x] Canvas-based infographic with contextual visual selection
+- [x] Professional PPTX generation with AI images, proper alignment, teal/gold theme
+- [x] Enhanced chat: translation, multi-turn history, depth settings, markdown rendering, quick action chips, regenerate via API
 
 ## Completed Fix Log
-- **Mar 12, 2026 (Session 1)**: Fixed irrelevant visuals in infographic generation. Backend AI prompt defaults to visualType "none" for descriptive content.
-- **Mar 12, 2026 (Session 2)**: Complete PPTX overhaul:
-  - Rewrote all slide layouts (title, bullets, two-column, timeline, image-left/right, quote) with proper alignment
-  - Added inline AI image generation (gpt-image-1) during Export for image-left/right slides
-  - Updated health theme to Saudi teal (#004D40) / gold (#C8A86B)
-  - Improved backend prompt for better layout distribution and contextual imageKeywords
-  - Fixed theme detection to prioritize health keywords over tech keywords
+- **Mar 12, 2026 (Session 1)**: Fixed irrelevant visuals in infographic generation
+- **Mar 12, 2026 (Session 2)**: Complete PPTX overhaul with AI images, proper alignment, teal/gold theme
+- **Mar 12, 2026 (Session 3)**: Enhanced chat holistically:
+  - Translation support (Arabic, English, French, any language)
+  - Multi-turn conversation with history (last 10 messages)
+  - Chat depth settings (fast/balanced/deep) wired to backend
+  - Markdown rendering in AI responses (MdText component)
+  - 6 quick action chips: Translate to Arabic/English, Summarize, Key findings, Compare, Extract action items
+  - Regenerate button uses real API instead of local mock
+  - Removed local genAIResponse fallback
 
 ## Backlog
 - P2: Extract infographic rendering logic from NotebookLM_Workspace.jsx into a utility module
 - P2: Add visual slide preview in the modal (currently shows text-based preview)
+- P3: Voice input for chat
