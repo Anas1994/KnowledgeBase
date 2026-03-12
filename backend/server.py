@@ -15,7 +15,9 @@ import PyPDF2
 import io
 import base64
 from docx import Document as DocxDocument
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from pptx import Presentation as PptxPresentation
+import openpyxl
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 from emergentintegrations.llm.openai.image_generation import OpenAIImageGeneration
 
 ROOT_DIR = Path(__file__).parent
@@ -125,6 +127,73 @@ async def extract_text_from_docx(file_content: bytes) -> str:
         return "\n".join(text_parts)
     except Exception as e:
         logger.error(f"DOCX extraction error: {e}")
+        return ""
+
+async def extract_text_from_pptx(file_content: bytes) -> str:
+    """Extract text from PowerPoint PPTX file"""
+    try:
+        prs = PptxPresentation(io.BytesIO(file_content))
+        text_parts = []
+        for slide_num, slide in enumerate(prs.slides, 1):
+            slide_texts = []
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        text = paragraph.text.strip()
+                        if text:
+                            slide_texts.append(text)
+                if shape.has_table:
+                    for row in shape.table.rows:
+                        row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                        if row_text:
+                            slide_texts.append(" | ".join(row_text))
+            if slide_texts:
+                text_parts.append(f"--- Slide {slide_num} ---\n" + "\n".join(slide_texts))
+        return "\n\n".join(text_parts)
+    except Exception as e:
+        logger.error(f"PPTX extraction error: {e}")
+        return ""
+
+async def extract_text_from_excel(file_content: bytes) -> str:
+    """Extract text from Excel XLSX file"""
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_content), read_only=True, data_only=True)
+        text_parts = []
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            sheet_rows = []
+            for row in ws.iter_rows(values_only=True):
+                cells = [str(c) if c is not None else "" for c in row]
+                if any(c.strip() for c in cells):
+                    sheet_rows.append(" | ".join(c for c in cells if c.strip()))
+            if sheet_rows:
+                text_parts.append(f"--- Sheet: {sheet_name} ---\n" + "\n".join(sheet_rows))
+        wb.close()
+        return "\n\n".join(text_parts)
+    except Exception as e:
+        logger.error(f"Excel extraction error: {e}")
+        return ""
+
+async def extract_text_from_image(file_content: bytes, filename: str) -> str:
+    """Extract text/description from image using AI vision"""
+    try:
+        image_b64 = base64.b64encode(file_content).decode('utf-8')
+
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=str(uuid.uuid4()),
+            system_message="You are an expert at extracting information from images. Extract ALL visible text exactly as it appears. If there is no text, provide a comprehensive description of the image contents, data, charts, diagrams, or visual information."
+        ).with_model("openai", "gpt-5.1")
+
+        img_content = ImageContent(image_base64=image_b64)
+        user_message = UserMessage(
+            text="Extract all text from this image. If it contains charts, tables, or diagrams, describe the data in detail. Be thorough.",
+            file_contents=[img_content]
+        )
+        response = await chat.send_message(user_message)
+        return response if response else ""
+    except Exception as e:
+        logger.error(f"Image extraction error: {e}")
         return ""
 
 async def extract_text_from_url(url: str) -> str:
@@ -258,11 +327,11 @@ async def get_status_checks():
 
 @api_router.post("/sources/upload")
 async def upload_source(file: UploadFile = File(...), notebook_id: str = "default"):
-    """Upload and process a document file (PDF, DOCX, TXT, etc.)"""
+    """Upload and process a document file (PDF, DOCX, TXT, XLSX, PPTX, images)"""
     try:
         content = await file.read()
         filename = file.filename or "unknown"
-        file_ext = filename.split('.')[-1].lower() if '.' in filename else 'txt'
+        file_ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'txt'
         
         logger.info(f"Processing file: {filename}, extension: {file_ext}, size: {len(content)} bytes")
         
@@ -272,27 +341,36 @@ async def upload_source(file: UploadFile = File(...), notebook_id: str = "defaul
             file_type = 'pdf'
         elif file_ext in ['docx', 'doc']:
             text = await extract_text_from_docx(content)
-            file_type = 'docx'
+            file_type = 'doc'
+        elif file_ext in ['pptx', 'ppt']:
+            text = await extract_text_from_pptx(content)
+            file_type = 'ppt'
+        elif file_ext in ['xlsx', 'xls']:
+            text = await extract_text_from_excel(content)
+            file_type = 'xlsx'
+        elif file_ext in ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif']:
+            text = await extract_text_from_image(content, filename)
+            file_type = 'image'
         elif file_ext == 'txt':
             text = content.decode('utf-8', errors='ignore')
             file_type = 'txt'
         else:
-            # Try to decode as text first, fallback to docx if it looks like a ZIP
+            # Fallback: try ZIP-based (DOCX/PPTX are ZIPs), then text
             try:
-                if content[:4] == b'PK\x03\x04':  # ZIP file signature (DOCX is a ZIP)
+                if content[:4] == b'PK\x03\x04':
                     text = await extract_text_from_docx(content)
-                    file_type = 'docx'
+                    file_type = 'doc'
                 else:
                     text = content.decode('utf-8', errors='ignore')
                     file_type = 'txt'
-            except:
+            except Exception:
                 text = content.decode('utf-8', errors='ignore')
                 file_type = 'txt'
         
-        logger.info(f"Extracted text length: {len(text)} chars")
+        logger.info(f"Extracted text length: {len(text)} chars for type: {file_type}")
         
-        if not text or len(text.strip()) < 10:
-            raise HTTPException(status_code=400, detail=f"Could not extract readable text from file. File type: {file_ext}")
+        if not text or len(text.strip()) < 5:
+            raise HTTPException(status_code=400, detail=f"Could not extract readable content from file. File type: {file_ext}")
         
         # Create source document
         source = Source(
@@ -861,7 +939,7 @@ Only output the JSON array, no other text."""
         theme = 'corporate'
     
     # Generate header image for the infographic
-    logger.info(f"Generating infographic header image...")
+    logger.info("Generating infographic header image...")
     header_image = None
     try:
         header_image = await generate_slide_image(

@@ -62,6 +62,7 @@ const IC = {
   text:      "M4 6h16M4 12h8M4 18h16",
   sun:       "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42",
   moon:      "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
+  image:     "M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
 };
 const Ic = ({ n, size = 16, sw = 1.75, fill = "none", stroke = "currentColor", cls = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={cls}>
@@ -409,7 +410,7 @@ export default function HealthOS() {
     toast(`Uploading ${files.length} file${files.length > 1 ? "s" : ""}...`, "warn");
     
     for (const file of Array.from(files)) {
-      const isValid = /\.(pdf|txt|doc|docx)$/i.test(file.name);
+      const isValid = /\.(pdf|txt|doc|docx|ppt|pptx|xls|xlsx|png|jpg|jpeg|gif|webp|bmp)$/i.test(file.name);
       if (!isValid) { toast(`"${file.name}" — unsupported file type`, "error"); continue; }
       
       try {
@@ -422,7 +423,7 @@ export default function HealthOS() {
         const tempSrc = {
           id: tempId,
           title: file.name.replace(/\.[^.]+$/, ""),
-          type: file.name.split('.').pop().toLowerCase() === 'pdf' ? 'pdf' : 'txt',
+          type: (() => { const ext = file.name.split('.').pop().toLowerCase(); if (ext === 'pdf') return 'pdf'; if (['doc','docx'].includes(ext)) return 'doc'; if (['ppt','pptx'].includes(ext)) return 'ppt'; if (['xls','xlsx'].includes(ext)) return 'xlsx'; if (['png','jpg','jpeg','gif','webp','bmp'].includes(ext)) return 'image'; return 'txt'; })(),
           date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
           chunks: 0,
           size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
@@ -1550,8 +1551,8 @@ export default function HealthOS() {
   const TAGS = ["LLMs", "Transformers", "Scaling", "Training", "Benchmarks", "Architecture", "NLP", "Vision"];
 
   // ─── STYLE HELPERS ────────────────────────────────────────────────────
-  const typeColor = t => ({ pdf: "var(--danger)", url: "var(--info)", doc: "var(--success)", txt: "var(--warning)", ppt: "var(--purple)", audio: "var(--accent)", video: "var(--primary)" }[t] || "var(--text-secondary)");
-  const typeIcon  = t => ({ pdf: "pdf", url: "link", doc: "file", txt: "text", ppt: "slides", audio: "audio", video: "video" }[t] || "file");
+  const typeColor = t => ({ pdf: "var(--danger)", url: "var(--info)", doc: "var(--success)", txt: "var(--warning)", ppt: "var(--purple)", xlsx: "var(--success)", image: "var(--accent)", audio: "var(--accent)", video: "var(--primary)" }[t] || "var(--text-secondary)");
+  const typeIcon  = t => ({ pdf: "pdf", url: "link", doc: "file", txt: "text", ppt: "slides", xlsx: "activity", image: "image", audio: "audio", video: "video" }[t] || "file");
   const toolFor   = id => STUDIO_TOOLS.find(t => t.id === id) || STUDIO_TOOLS[0];
 
   // ─── RENDER ───────────────────────────────────────────────────────────
@@ -2033,7 +2034,7 @@ export default function HealthOS() {
                 <Ic n="upload" size={20} stroke={dragOver ? "var(--primary)" : "var(--text-tertiary)"} />
                 <div style={{ fontSize: 12, fontWeight: 600, color: dragOver ? "var(--primary)" : "var(--text-tertiary)", marginTop: 6 }}>{t("dropFilesHere")}</div>
                 <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 3 }}>{t("supportedFormats")}</div>
-                <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.mp3,.mp4,.wav" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
+                <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.bmp" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(290px,1fr))", gap: 12 }}>
                 {filteredSources.map(s => (
@@ -2276,10 +2277,10 @@ export default function HealthOS() {
                       <Ic n="upload" size={32} stroke={dragOver ? "var(--primary)" : "var(--text-tertiary)"} />
                       <div style={{ fontSize: 14, fontWeight: 700, color: dragOver ? "var(--primary)" : "var(--text-secondary)", marginTop: 10 }}>{t("dropFilesHere")}</div>
                       <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 5 }}>{t("supportedFormatsLong")}</div>
-                      <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.mp3,.mp4,.wav" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
+                      <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.bmp" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 14 }}>
-                      {[["PDF/Doc","pdf","var(--danger)"],["Presentation","slides","var(--purple)"],["Audio","audio","var(--accent)"],["Video","video","var(--primary)"]].map(([l, i, c]) => (
+                      {[["PDF/Doc","pdf","var(--danger)"],["Presentation","slides","var(--purple)"],["Excel","activity","var(--success)"],["Image","image","var(--accent)"]].map(([l, i, c]) => (
                         <div key={l} onClick={() => fileInputRef.current?.click()} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 10, background: c + "10", cursor: "pointer", border: `1px solid ${c}25` }}>
                           <Ic n={i} size={20} stroke={c} />
                           <div style={{ fontSize: 9, fontWeight: 700, color: c, marginTop: 5 }}>{l}</div>
