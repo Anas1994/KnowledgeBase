@@ -115,8 +115,8 @@ export const translations = {
     
     // Sources View
     dropFilesHere: "Drop files here or click to browse",
-    supportedFormats: "PDF, DOC, TXT, PPT, MP3, MP4",
-    supportedFormatsLong: "PDF, DOC, DOCX, TXT, PPT, PPTX, MP3, MP4, WAV",
+    supportedFormats: "PDF, DOC, PPTX, XLSX, PNG, JPG",
+    supportedFormatsLong: "PDF, DOC, DOCX, TXT, PPT, PPTX, XLS, XLSX, PNG, JPG, JPEG, GIF, WEBP",
     all: "All",
     pdf: "Pdf",
     url: "Url",
@@ -345,8 +345,8 @@ export const translations = {
     
     // Sources View
     dropFilesHere: "اسحب الملفات هنا أو انقر للتصفح",
-    supportedFormats: "PDF, DOC, TXT, PPT, MP3, MP4",
-    supportedFormatsLong: "PDF, DOC, DOCX, TXT, PPT, PPTX, MP3, MP4, WAV",
+    supportedFormats: "PDF, DOC, PPTX, XLSX, PNG, JPG",
+    supportedFormatsLong: "PDF, DOC, DOCX, TXT, PPT, PPTX, XLS, XLSX, PNG, JPG, JPEG, GIF, WEBP",
     all: "الكل",
     pdf: "PDF",
     url: "رابط",
