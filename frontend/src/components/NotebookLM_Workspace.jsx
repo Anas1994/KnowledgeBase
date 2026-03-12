@@ -1303,167 +1303,283 @@ export default function HealthOS() {
     if (out.type === "infographic" && out.slides_data && out.slides_data.length > 0) {
       try {
         toast("Creating infographic image...", "warn");
-        
-        // Get theme colors
-        const themeName = out.theme || 'corporate';
-        const theme = THEMES[themeName] || THEMES.corporate;
-        
-        // Create canvas
-        const canvas = document.createElement('canvas');
         const sections = out.slides_data;
-        const sectionHeight = 200;
-        const headerHeight = 250;
-        canvas.width = 1200;
-        canvas.height = headerHeight + (sections.length * sectionHeight) + 100;
-        
+        const W = 1200;
+        const PAD = 40;
+        const GAP = 20;
+        const COL_W = (W - PAD * 2 - GAP) / 2;
+        const HEADER_H = 280;
+        const FOOTER_H = 60;
+        const CARD_PAD = 24;
+        const BORDER_W = 5;
+        const palette = ['#006C5B','#C8A86B','#0ea5e9','#EF4444','#8B5CF6','#F59E0B','#EC4899','#10B981','#3B82F6','#D946EF'];
+
+        // Icon shapes drawn on canvas (simple geometric representations)
+        const drawIcon = (ctx, name, cx, cy, size, color) => {
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          const s = size / 24;
+          ctx.translate(cx - size/2, cy - size/2);
+          ctx.scale(s, s);
+          const icons = {
+            chart: () => { ctx.beginPath(); ctx.moveTo(4,20); ctx.lineTo(4,4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(4,20); ctx.lineTo(20,20); ctx.stroke(); ctx.fillRect(7,10,3,10); ctx.fillRect(12,6,3,14); ctx.fillRect(17,12,3,8); },
+            users: () => { ctx.beginPath(); ctx.arc(9,7,4,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(9,24,8,Math.PI*1.2,Math.PI*1.8); ctx.stroke(); ctx.beginPath(); ctx.arc(17,9,3,0,Math.PI*2); ctx.fill(); },
+            clock: () => { ctx.beginPath(); ctx.arc(12,12,10,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(12,6); ctx.lineTo(12,12); ctx.lineTo(16,14); ctx.stroke(); },
+            target: () => { ctx.beginPath(); ctx.arc(12,12,10,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(12,12,6,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(12,12,2,0,Math.PI*2); ctx.fill(); },
+            shield: () => { ctx.beginPath(); ctx.moveTo(12,2); ctx.lineTo(20,6); ctx.lineTo(20,13); ctx.quadraticCurveTo(20,20,12,22); ctx.quadraticCurveTo(4,20,4,13); ctx.lineTo(4,6); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(9,12); ctx.lineTo(11,14); ctx.lineTo(15,10); ctx.stroke(); },
+            globe: () => { ctx.beginPath(); ctx.arc(12,12,10,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.ellipse(12,12,4,10,0,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(2,12); ctx.lineTo(22,12); ctx.stroke(); },
+            lightbulb: () => { ctx.beginPath(); ctx.arc(12,9,6,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(9,15); ctx.lineTo(9,18); ctx.lineTo(15,18); ctx.lineTo(15,15); ctx.stroke(); ctx.beginPath(); ctx.moveTo(9,20); ctx.lineTo(15,20); ctx.stroke(); },
+            rocket: () => { ctx.beginPath(); ctx.moveTo(12,2); ctx.quadraticCurveTo(18,8,16,16); ctx.lineTo(8,16); ctx.quadraticCurveTo(6,8,12,2); ctx.closePath(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(8,16); ctx.lineTo(6,20); ctx.lineTo(10,18); ctx.stroke(); ctx.beginPath(); ctx.moveTo(16,16); ctx.lineTo(18,20); ctx.lineTo(14,18); ctx.stroke(); },
+            cog: () => { ctx.beginPath(); ctx.arc(12,12,4,0,Math.PI*2); ctx.stroke(); for(let i=0;i<8;i++){const a=i*Math.PI/4; ctx.beginPath(); ctx.moveTo(12+Math.cos(a)*6,12+Math.sin(a)*6); ctx.lineTo(12+Math.cos(a)*9,12+Math.sin(a)*9); ctx.stroke(); }},
+            check: () => { ctx.beginPath(); ctx.arc(12,12,10,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(7,12); ctx.lineTo(10,16); ctx.lineTo(17,8); ctx.stroke(); },
+            growth: () => { ctx.beginPath(); ctx.moveTo(4,20); ctx.lineTo(10,12); ctx.lineTo(14,16); ctx.lineTo(20,6); ctx.stroke(); ctx.beginPath(); ctx.moveTo(16,6); ctx.lineTo(20,6); ctx.lineTo(20,10); ctx.stroke(); },
+            home: () => { ctx.beginPath(); ctx.moveTo(3,12); ctx.lineTo(12,3); ctx.lineTo(21,12); ctx.stroke(); ctx.beginPath(); ctx.moveTo(6,10); ctx.lineTo(6,20); ctx.lineTo(18,20); ctx.lineTo(18,10); ctx.stroke(); },
+            briefcase: () => { ctx.strokeRect(3,8,18,13); ctx.beginPath(); ctx.moveTo(8,8); ctx.lineTo(8,5); ctx.lineTo(16,5); ctx.lineTo(16,8); ctx.stroke(); ctx.beginPath(); ctx.moveTo(3,14); ctx.lineTo(21,14); ctx.stroke(); },
+          };
+          (icons[name] || icons.briefcase)();
+          ctx.restore();
+        };
+
+        // Word-wrap helper
+        const wrapText = (ctx, text, maxW) => {
+          const words = text.split(' ');
+          const lines = [];
+          let line = '';
+          for (const w of words) {
+            const test = line ? line + ' ' + w : w;
+            if (ctx.measureText(test).width > maxW && line) {
+              lines.push(line);
+              line = w;
+            } else {
+              line = test;
+            }
+          }
+          if (line) lines.push(line);
+          return lines;
+        };
+
+        // Pre-calculate card heights
+        const cardHeights = sections.map((section) => {
+          const canvas2 = document.createElement('canvas');
+          const ctx2 = canvas2.getContext('2d');
+          let h = CARD_PAD + 28; // top pad + title
+          if (section.stat) h += 48; // stat line
+          if (section.statLabel) h += 20; // stat label
+          h += 8; // divider gap
+          ctx2.font = '14px Inter, Arial';
+          const textW = COL_W - CARD_PAD * 2 - BORDER_W - 20;
+          (section.bullets || []).slice(0, 4).forEach(b => {
+            const lines = wrapText(ctx2, '  ' + b, textW);
+            h += lines.length * 20;
+          });
+          h += CARD_PAD;
+          return Math.max(h, 160);
+        });
+
+        // Calculate row heights (2 columns)
+        const rows = [];
+        for (let i = 0; i < sections.length; i += 2) {
+          const h1 = cardHeights[i];
+          const h2 = i + 1 < sections.length ? cardHeights[i + 1] : 0;
+          rows.push(Math.max(h1, h2));
+        }
+        const totalH = HEADER_H + rows.reduce((a, h) => a + h + GAP, 0) + GAP + FOOTER_H;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = totalH;
         const ctx = canvas.getContext('2d');
-        
-        // Background
-        ctx.fillStyle = '#F8FAFC';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Header background
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, headerHeight);
-        gradient.addColorStop(0, '#' + theme.dark);
-        gradient.addColorStop(1, '#' + theme.primary);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, headerHeight);
-        
+
+        // ─── Background ─────────────
+        ctx.fillStyle = '#F0F4F8';
+        ctx.fillRect(0, 0, W, totalH);
+
+        // ─── Header ─────────────────
+        const hGrad = ctx.createLinearGradient(0, 0, W, HEADER_H);
+        hGrad.addColorStop(0, '#006C5B');
+        hGrad.addColorStop(1, '#004D40');
+        ctx.fillStyle = hGrad;
+        ctx.fillRect(0, 0, W, HEADER_H);
+
+        // Decorative pattern
+        ctx.globalAlpha = 0.06;
+        ctx.fillStyle = '#FFFFFF';
+        for (let i = 0; i < 12; i++) {
+          ctx.beginPath();
+          ctx.arc(100 + i * 100, 50 + (i % 3) * 80, 40 + (i % 4) * 15, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Gold accent line at top
+        ctx.fillStyle = '#C8A86B';
+        ctx.fillRect(0, 0, W, 4);
+
         // Title
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 48px Arial';
+        ctx.font = 'bold 40px Inter, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(out.title, canvas.width / 2, 100);
-        
+        ctx.textBaseline = 'middle';
+        const titleText = out.title.length > 50 ? out.title.substring(0, 47) + '...' : out.title;
+        ctx.fillText(titleText, W / 2, 90);
+
         // Subtitle
-        ctx.font = '24px Arial';
-        ctx.fillStyle = '#' + theme.light;
-        ctx.fillText(`Based on ${sections.length} key insights`, canvas.width / 2, 150);
-        
-        // Decorative line
-        ctx.strokeStyle = '#' + theme.accent;
-        ctx.lineWidth = 4;
+        ctx.font = '20px Inter, Arial';
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillText(`Based on ${sections.length} key insights from your sources`, W / 2, 135);
+
+        // Decorative divider
+        ctx.strokeStyle = '#C8A86B';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(canvas.width / 2 - 100, 180);
-        ctx.lineTo(canvas.width / 2 + 100, 180);
+        ctx.moveTo(W / 2 - 60, 165);
+        ctx.lineTo(W / 2 + 60, 165);
         ctx.stroke();
-        
-        // Add header image if available
-        if (sections[0]?.headerImage) {
-          try {
-            const img = new Image();
-            img.src = `data:image/png;base64,${sections[0].headerImage}`;
-            await new Promise((resolve, reject) => {
-              img.onload = resolve;
-              img.onerror = reject;
-              setTimeout(reject, 5000);
-            });
-            // Draw small image in corner
-            ctx.drawImage(img, canvas.width - 220, 20, 200, 200);
-          } catch (imgErr) {
-            console.log('Header image load failed');
-          }
-        }
-        
-        // Color palette for sections
-        const sectionColors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-        
-        // Draw sections
-        let yOffset = headerHeight + 30;
-        sections.forEach((section, index) => {
-          const isEven = index % 2 === 0;
-          const sectionColor = sectionColors[index % sectionColors.length];
-          
-          // Section card background
-          ctx.fillStyle = '#FFFFFF';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-          ctx.shadowBlur = 20;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 4;
-          
-          const cardX = isEven ? 40 : 620;
-          const cardWidth = 540;
-          
-          // Draw rounded rectangle
-          const cardY = yOffset;
-          const cardHeight = 170;
-          const radius = 16;
-          
+
+        // Section count badges
+        const badgeY = 210;
+        const badgeLabels = [`${sections.length} Sections`, 'AI-Generated', 'HealthOS'];
+        badgeLabels.forEach((label, i) => {
+          const bx = W / 2 + (i - 1) * 170;
+          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          const tw = ctx.measureText(label).width + 24;
+          const rr = 14;
           ctx.beginPath();
-          ctx.moveTo(cardX + radius, cardY);
-          ctx.lineTo(cardX + cardWidth - radius, cardY);
-          ctx.quadraticCurveTo(cardX + cardWidth, cardY, cardX + cardWidth, cardY + radius);
-          ctx.lineTo(cardX + cardWidth, cardY + cardHeight - radius);
-          ctx.quadraticCurveTo(cardX + cardWidth, cardY + cardHeight, cardX + cardWidth - radius, cardY + cardHeight);
-          ctx.lineTo(cardX + radius, cardY + cardHeight);
-          ctx.quadraticCurveTo(cardX, cardY + cardHeight, cardX, cardY + cardHeight - radius);
-          ctx.lineTo(cardX, cardY + radius);
-          ctx.quadraticCurveTo(cardX, cardY, cardX + radius, cardY);
-          ctx.closePath();
+          ctx.roundRect(bx - tw / 2, badgeY - rr, tw, rr * 2, rr);
           ctx.fill();
-          
-          // Reset shadow
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.font = '13px Inter, Arial';
+          ctx.fillText(label, bx, badgeY + 1);
+        });
+
+        // ─── Section Cards ──────────
+        let yOff = HEADER_H + GAP;
+        sections.forEach((section, idx) => {
+          const col = idx % 2;
+          const rowIdx = Math.floor(idx / 2);
+          const cardX = PAD + col * (COL_W + GAP);
+          const cardY = yOff;
+          const rowH = rows[rowIdx];
+          const color = palette[idx % palette.length];
+          const iconName = section.icon || 'briefcase';
+
+          // Card shadow
+          ctx.shadowColor = 'rgba(0,0,0,0.08)';
+          ctx.shadowBlur = 16;
+          ctx.shadowOffsetY = 4;
+
+          // Card background
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, COL_W, rowH, 14);
+          ctx.fill();
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-          
-          // Section number badge
-          ctx.fillStyle = sectionColor;
+          ctx.shadowOffsetY = 0;
+
+          // Left color border
+          ctx.fillStyle = color;
           ctx.beginPath();
-          ctx.arc(cardX + 40, cardY + 40, 24, 0, Math.PI * 2);
+          ctx.roundRect(cardX, cardY, BORDER_W, rowH, [14, 0, 0, 14]);
           ctx.fill();
-          
+
+          // ─── Card Content ───────
+          let cx = cardX + BORDER_W + CARD_PAD;
+          let cy = cardY + CARD_PAD;
+          const contentW = COL_W - BORDER_W - CARD_PAD * 2;
+
+          // Number badge
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(cx + 18, cy + 14, 18, 0, Math.PI * 2);
+          ctx.fill();
           ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 20px Arial';
+          ctx.font = 'bold 16px Inter, Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(String(index + 1), cardX + 40, cardY + 47);
-          
-          // Section title
-          ctx.fillStyle = '#1F2937';
-          ctx.font = 'bold 22px Arial';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(idx + 1), cx + 18, cy + 14);
+
+          // Title
           ctx.textAlign = 'left';
-          ctx.fillText(section.title || 'Section', cardX + 80, cardY + 45);
-          
-          // Stat if available
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillStyle = '#1A1F36';
+          ctx.font = 'bold 18px Inter, Arial';
+          ctx.fillText(section.title || 'Section', cx + 46, cy + 20);
+          cy += 40;
+
+          // Stat value
           if (section.stat) {
-            ctx.fillStyle = sectionColor;
-            ctx.font = 'bold 36px Arial';
-            ctx.fillText(section.stat, cardX + 80, cardY + 95);
-            
-            ctx.fillStyle = '#6B7280';
-            ctx.font = '16px Arial';
-            ctx.fillText(section.statLabel || '', cardX + 80 + ctx.measureText(section.stat).width + 15, cardY + 90);
+            ctx.fillStyle = color;
+            ctx.font = 'bold 32px Inter, Arial';
+            ctx.fillText(section.stat, cx, cy + 6);
+            cy += 36;
+
+            // Stat label on its own line
+            if (section.statLabel) {
+              ctx.fillStyle = '#6B7285';
+              ctx.font = '14px Inter, Arial';
+              ctx.fillText(section.statLabel, cx, cy);
+              cy += 22;
+            }
           }
-          
-          // Bullets
-          ctx.fillStyle = '#4B5563';
-          ctx.font = '14px Arial';
-          const bullets = section.bullets || [];
-          bullets.slice(0, 3).forEach((bullet, bIndex) => {
-            const bulletY = cardY + (section.stat ? 115 : 75) + (bIndex * 22);
-            ctx.fillText('• ' + (bullet.length > 60 ? bullet.substring(0, 57) + '...' : bullet), cardX + 80, bulletY);
-          });
-          
-          // Icon indicator
-          ctx.fillStyle = sectionColor + '30';
+
+          // Divider line
+          ctx.strokeStyle = '#E7EAF3';
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(cardX + cardWidth - 50, cardY + cardHeight / 2, 30, 0, Math.PI * 2);
+          ctx.moveTo(cx, cy + 4);
+          ctx.lineTo(cx + contentW, cy + 4);
+          ctx.stroke();
+          cy += 14;
+
+          // Bullets with word wrap
+          ctx.fillStyle = '#4B5563';
+          ctx.font = '13px Inter, Arial';
+          const maxTextW = contentW - 16;
+          (section.bullets || []).slice(0, 4).forEach(bullet => {
+            const lines = wrapText(ctx, bullet, maxTextW);
+            lines.forEach((line, li) => {
+              const prefix = li === 0 ? '  ' : '    ';
+              ctx.fillText(prefix + line, cx, cy + 4);
+              cy += 19;
+            });
+          });
+
+          // Icon in bottom-right corner
+          const iconSize = 44;
+          const iconX = cardX + COL_W - CARD_PAD - iconSize / 2;
+          const iconY = cardY + rowH - CARD_PAD - iconSize / 2;
+          ctx.fillStyle = color + '12';
+          ctx.beginPath();
+          ctx.arc(iconX, iconY, iconSize / 2 + 8, 0, Math.PI * 2);
           ctx.fill();
-          
-          // Move to next row every 2 sections
-          if (!isEven) {
-            yOffset += sectionHeight;
+          drawIcon(ctx, iconName, iconX, iconY, iconSize, color + '60');
+
+          // Move to next row
+          if (col === 1 || idx === sections.length - 1) {
+            yOff += rowH + GAP;
           }
         });
-        
-        // Footer
-        ctx.fillStyle = '#' + theme.dark;
-        ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '16px Arial';
+
+        // ─── Footer ─────────────────
+        const footGrad = ctx.createLinearGradient(0, totalH - FOOTER_H, W, totalH);
+        footGrad.addColorStop(0, '#006C5B');
+        footGrad.addColorStop(1, '#004D40');
+        ctx.fillStyle = footGrad;
+        ctx.fillRect(0, totalH - FOOTER_H, W, FOOTER_H);
+        ctx.fillStyle = '#C8A86B';
+        ctx.fillRect(0, totalH - FOOTER_H, W, 3);
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.font = '14px Inter, Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('Generated by HealthOS • AI-Powered Research Assistant', canvas.width / 2, canvas.height - 25);
-        
-        // Convert to PNG and download
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Generated by HealthOS  |  AI-Powered Research Assistant', W / 2, totalH - FOOTER_H / 2 + 2);
+
+        // ─── Export ─────────────────
         canvas.toBlob((blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -2540,7 +2656,53 @@ export default function HealthOS() {
                   <button data-testid="output-close-btn" onClick={() => setModal(null)} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-                  <pre style={{ fontFamily: "inherit", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{modalData.content || "No content generated."}</pre>
+                  {modalData.type === "infographic" && modalData.slides_data?.length > 0 ? (
+                    <div>
+                      {/* Visual Infographic Header */}
+                      <div style={{ background: "linear-gradient(135deg, #006C5B, #004D40)", borderRadius: 16, padding: "28px 24px", marginBottom: 16, textAlign: "center", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", inset: 0, opacity: 0.05, background: "radial-gradient(circle at 20% 50%, white 0%, transparent 50%), radial-gradient(circle at 80% 50%, white 0%, transparent 50%)" }} />
+                        <div style={{ position: "relative", zIndex: 1 }}>
+                          <div style={{ color: "white", fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: "-0.3px" }}>{modalData.title}</div>
+                          <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Based on {modalData.slides_data.length} key insights from your sources</div>
+                          <div style={{ width: 60, height: 3, background: "#C8A86B", borderRadius: 2, margin: "12px auto 0" }} />
+                        </div>
+                      </div>
+                      {/* Section Cards Grid */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        {modalData.slides_data.map((sec, si) => {
+                          const colors = ['#006C5B','#C8A86B','#0ea5e9','#EF4444','#8B5CF6','#F59E0B','#EC4899','#10B981','#3B82F6','#D946EF'];
+                          const c = colors[si % colors.length];
+                          return (
+                            <div key={si} style={{ background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden", position: "relative" }}>
+                              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: c, borderRadius: "12px 0 0 12px" }} />
+                              <div style={{ padding: "14px 14px 14px 16px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: c, color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{si + 1}</div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.3 }}>{sec.title}</div>
+                                </div>
+                                {sec.stat && (
+                                  <div style={{ marginBottom: 6 }}>
+                                    <span style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: "-0.5px" }}>{sec.stat}</span>
+                                    {sec.statLabel && <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, marginTop: 1 }}>{sec.statLabel}</div>}
+                                  </div>
+                                )}
+                                <div style={{ height: 1, background: "var(--border)", marginBottom: 6 }} />
+                                {(sec.bullets || []).slice(0, 3).map((b, bi) => (
+                                  <div key={bi} style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 2, paddingLeft: 8, position: "relative" }}>
+                                    <span style={{ position: "absolute", left: 0, color: c }}>&#x2022;</span> {b}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Footer */}
+                      <div style={{ textAlign: "center", marginTop: 14, padding: "10px 0", borderTop: "1px solid var(--border)", color: "var(--text-tertiary)", fontSize: 10 }}>Generated by HealthOS  |  AI-Powered Research Assistant</div>
+                    </div>
+                  ) : (
+                    <pre style={{ fontFamily: "inherit", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{modalData.content || "No content generated."}</pre>
+                  )}
                 </div>
               </div>
             );

@@ -877,11 +877,12 @@ CONTENT:
 {content}
 
 Create an infographic with 5-7 sections. For each section provide:
-1. A clear section title (max 5 words)
-2. A key statistic or number (if applicable, e.g., "85%", "4 Steps", "$2.5M")
-3. 2-3 bullet points of supporting information
-4. An icon suggestion from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase, mobile, cloud
-5. A visual type: "stat", "list", "process", "comparison", "timeline", "quote"
+1. A clear section title (max 6 words)
+2. A key statistic or number (e.g., "85%", "4 Steps", "$2.5M", "18+ Modules"). Always try to include a stat.
+3. A short stat label describing the stat (e.g., "adoption rate", "implementation phases", "annual investment"). Keep it under 5 words.
+4. 3-4 detailed bullet points of supporting information. Each bullet should be a complete sentence (15-25 words).
+5. An icon suggestion from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
+6. A visual type: "stat", "list", "process", "comparison", "timeline", "quote"
 
 Format your response as JSON array:
 [
