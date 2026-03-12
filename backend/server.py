@@ -876,13 +876,15 @@ SOURCES: {', '.join(sources)}
 CONTENT:
 {content}
 
-Create an infographic with 5-7 sections. For each section provide:
+Create an infographic with 6-7 sections. IMPORTANT: Vary the visual types across sections for visual variety.
+
+For each section provide:
 1. A clear section title (max 6 words)
-2. A key statistic or number (e.g., "85%", "4 Steps", "$2.5M", "18+ Modules"). Always try to include a stat.
-3. A short stat label describing the stat (e.g., "adoption rate", "implementation phases", "annual investment"). Keep it under 5 words.
-4. 3-4 detailed bullet points of supporting information. Each bullet should be a complete sentence (15-25 words).
-5. An icon suggestion from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
-6. A visual type: "stat", "list", "process", "comparison", "timeline", "quote"
+2. A key statistic. IMPORTANT: At least 2 sections MUST have percentage stats (e.g., "85%", "92%"). Other sections should use counts like "4 Stages", "$2.5M", "18+ Modules"
+3. A short stat label (under 5 words) describing the stat
+4. 3-4 detailed bullet points (15-25 words each)
+5. An icon from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
+6. A visual type - MUST use variety: at least 1 "process" (for steps/stages), at least 2 "stat" (for percentages/numbers), and distribute "list", "comparison", "timeline" across remaining sections
 
 Format your response as JSON array:
 [
