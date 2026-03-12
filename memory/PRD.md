@@ -3,22 +3,8 @@
 ## Original Problem Statement
 Build an AI-powered research workspace (NotebookLM-style) that allows users to upload source documents (TXT, PDF, DOCX), chat with an AI that uses these sources for context, and generate complex outputs like multi-slide PPTX presentations and infographics.
 
-### Phase 2: Saudi Healthcare Command Theme
-Transform the entire UI into a "Saudi Healthcare Command Theme" with a dark, premium aesthetic inspired by the Saudi Ministry of Health. Add English/Arabic localization with full RTL support.
-
-## User Personas
-- Healthcare professionals and analysts
-- Ministry of Health staff
-- Medical researchers analyzing clinical data and health policy documents
-
-## Core Requirements
-1. Source document upload and management (PDF, DOCX, TXT)
-2. AI chat with source context (GPT-5.1 via Emergent LLM Key)
-3. Studio output generation (Slide Decks, Infographics, Reports, etc.)
-4. AI-powered image generation (Gemini Nano Banana via Emergent LLM Key)
-5. Output persistence in MongoDB
-6. Saudi Healthcare Command Theme UI
-7. English/Arabic localization with RTL support
+### Phase 2: Saudi Healthcare Command Theme → Light Saudi Vision 2030 Theme
+Transform the entire UI into a clean, professional light theme inspired by Saudi Vision 2030 with Saudi Green (#006C5B) and Gold (#C8A86B) accents. Add English/Arabic localization with full RTL support.
 
 ## Architecture
 ```
@@ -31,7 +17,7 @@ Transform the entire UI into a "Saudi Healthcare Command Theme" with a dark, pre
 │   │   ├── components/
 │   │   │   └── NotebookLM_Workspace.jsx  # Main UI component
 │   │   ├── i18n/
-│   │   │   ├── translations.js           # EN/AR dictionaries
+│   │   │   ├── translations.js           # EN/AR dictionaries (200+ keys)
 │   │   │   └── LanguageContext.js         # React language context
 │   │   ├── App.js
 │   │   └── App.css
@@ -52,25 +38,22 @@ Transform the entire UI into a "Saudi Healthcare Command Theme" with a dark, pre
 - PPTX export with professional layouts
 - Infographic PNG export
 
-### Saudi Healthcare Command Theme (Feb 2026)
-- Complete dark theme with Riyadh cityscape background overlay
-- Color palette: Saudi Green (#006C5B), Gold Accent (#C8A86B)
-- Glass-morphism panels with backdrop-blur throughout
+### Light Saudi Vision 2030 Theme (Feb 2026)
+- Clean white/off-white (#F5F7FA) backgrounds
+- White cards with subtle shadows and #E7EAF3 borders
+- Saudi Green (#006C5B) primary buttons and accents
+- Gold (#C8A86B) secondary accents
+- Dark text (#1A1F36, #6B7285) on light backgrounds
 - Cairo + Inter typography via Google Fonts
-- Noise texture overlay for depth
-- "HealthOS" branding
-- All panels, cards, modals, and views styled consistently
+- "HealthOS" branding with Saudi Green accent
+- No glass-morphism or dark overlays - clean and professional
 
 ### English/Arabic Localization (Feb 2026)
-- Complete EN/AR translation dictionary (~200+ keys)
+- Complete EN/AR translation dictionary (200+ keys)
 - React LanguageContext with `useLanguage` hook
 - Language toggle button in top nav (EN/ع)
 - Full RTL layout support (dir="rtl" on root)
-- All major UI sections translated:
-  - Navigation tabs, sidebar, KPIs, section headers
-  - Chat interface, Studio tools, Notes view
-  - Upload modal, Share modal, Settings modal
-  - Quick actions, activity feed, right studio rail
+- All UI sections translated: nav, sidebar, KPIs, cards, modals, studio tools, chat, notes
 
 ## Key API Endpoints
 - `POST /api/upload` - Upload and process source documents
@@ -94,15 +77,13 @@ Transform the entire UI into a "Saudi Healthcare Command Theme" with a dark, pre
 
 ## Prioritized Backlog
 
-### P0 - None (all critical features implemented)
-
-### P1 - Potential Improvements
-1. Break down NotebookLM_Workspace.jsx into smaller components (Sidebar, Studio, ChatView, etc.)
-2. Add more file type support (XLSX for tables)
+### P1 - Improvements
+1. Break down NotebookLM_Workspace.jsx into smaller components
+2. Add more file type support (XLSX)
 3. User authentication
 
-### P2 - Future Enhancements
-1. Collaborative editing with real-time sync
-2. More AI output types (Video Script, Mind Map, Quiz, Flashcards)
-3. Google Drive integration for document import
-4. Export notebook data (JSON, CSV, ZIP)
+### P2 - Future
+1. Collaborative editing
+2. More AI output types (Video Script, Mind Map, Quiz, Flashcards - actual generation)
+3. Google Drive integration
+4. Notebook export (JSON, CSV, ZIP)
