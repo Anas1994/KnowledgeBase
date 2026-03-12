@@ -10,7 +10,7 @@ import os
 import time
 
 # Get BASE_URL from environment - use public URL for testing
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://localized-theme-lab.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://visual-relevance.preview.emergentagent.com').rstrip('/')
 
 # Test file paths
 TEST_FILES = {

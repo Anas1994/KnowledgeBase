@@ -8,7 +8,7 @@ with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
     temp_path = f.name
 
 try:
-    url = "https://localized-theme-lab.preview.emergentagent.com/api/sources/upload"
+    url = "https://visual-relevance.preview.emergentagent.com/api/sources/upload"
     
     with open(temp_path, 'rb') as file:
         files = {'file': ('test.txt', file, 'text/plain')}

@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 
 # Get BASE_URL from environment - use public URL for testing
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://localized-theme-lab.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://visual-relevance.preview.emergentagent.com').rstrip('/')
 
 class TestAPIHealth:
     """Test API health and basic connectivity"""

@@ -9,7 +9,7 @@ import tempfile
 import os
 
 class NotebookLMAPITester:
-    def __init__(self, base_url="https://localized-theme-lab.preview.emergentagent.com"):
+    def __init__(self, base_url="https://visual-relevance.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.session.headers.update({

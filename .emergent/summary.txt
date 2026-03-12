@@ -1,51 +1,57 @@
 <analysis>**original_problem_statement:**
-The user wants to completely redesign the UI of the application to a Saudi Healthcare Command Theme. This involves a comprehensive overhaul of colors, fonts, layout, background, and component styling, while preserving all existing functionality. The user provided a detailed specification document outlining the new visual identity, including specific color codes, font names, element renaming (e.g., AI Research Notebook to Health Intelligence Workspace), and layout changes for the top bar, sidebar, and main content panels.
+The user's initial request was for a complete UI overhaul to a Saudi Healthcare Command Theme (dark) and a Saudi Vision Theme (light), including localization for English/Arabic with RTL support and a theme-switching toggle. Subsequently, the user requested to expand the Add Source functionality to support more file types, including Excel spreadsheets, PowerPoint presentations, and images. Most recently, the user has been focused on enhancing the infographic generation feature, providing multiple rounds of feedback to improve its visual quality and relevance, aiming for a professional, data-driven output similar to a provided reference image. The latest feedback indicates that the generated visuals are not contextually relevant to the information presented.
 
 PRODUCT REQUIREMENTS:
-- Transform the entire UI to the Saudi Healthcare Command Theme.
-- Use the specified color palette (Primary Saudi Green #006C5B, Gold Accent #C8A86B, etc.).
-- Implement a new layered background with an aerial image of Makkah/Madinah and gradient overlays.
-- Redesign all major UI sections: Top Navigation, Left Sidebar, Studio Panel, and Output Panels.
-- Update typography to use DIN Next Arabic and Inter fonts.
-- Rename UI labels and descriptions to fit the Health Intelligence theme.
-- Ensure all existing features (chat, source management, PPT/infographic generation) remain fully functional.
+-   **UI & Theming:** A fully functional dual-theme (dark/light) application with a user-facing toggle.
+-   **Localization:** English/Arabic language support with full RTL for Arabic.
+-   **Source Ingestion:** The application must accept and process text from , , , , and image files.
+-   **Infographic Generation:** The application must generate visually rich, professional, and contextually relevant infographics based on the sourced content. The visuals (charts, diagrams, icons) must make sense and add value to the presented information.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A fully functional AI-powered research application called NotebookLM Workspace. It allows users to upload source documents (TXT, PDF, DOCX), chat with an AI that uses these sources for context, and generate complex outputs like multi-slide PPTX presentations and infographics. The generation process is powered by GPT-5.1 for content and Gemini for images, with persistence for sources and outputs in a MongoDB database. Long-running tasks like image generation are handled asynchronously to prevent timeouts.
+The application features a dual-theme (dark/light) UI with a working theme toggle and full English/Arabic localization. The source ingestion system has been successfully upgraded to handle , , , , and image files, extracting their content on the backend. The infographic generation feature has been significantly overhauled; it now uses the HTML5 Canvas API to produce complex, visually-styled infographics with charts, icons, and diagrams. A visual preview of the infographic is rendered directly within the application's output modal. However, the logic that determines which visual to display is flawed, leading to irrelevant graphics.
 
 **Last working item**:
--   **Last item agent was working:** The agent was beginning the major task of transforming the platform's UI into the Saudi Healthcare Command Theme as requested by the user. It had just started by finding a suitable background image for the theme.
+-   **Last item agent was working:** Addressing user feedback on the enhanced infographic generation. The user provided an image and reported that the visuals (e.g., charts, workflow diagrams) are being inserted randomly and do not make sense in the context of the accompanying text. The agent has acknowledged the feedback and is about to start debugging the issue.
 -   **Status:** NOT STARTED
 -   **Agent Testing Done:** N
--   **Which testing method agent to use?** Frontend testing agent. Given the scale of the UI rewrite, comprehensive testing is required to ensure no functionality is broken. The screenshot tool will also be essential for visual verification throughout the process.
--   **User Testing Done:** N
+-   **Which testing method agent to use?** Manual testing. The agent needs to modify the backend AI prompt and frontend rendering logic. The fix can be verified by generating a new infographic and using the  tool to capture the output preview, ensuring the visuals are contextually appropriate or omitted if irrelevant.
+-   **User Testing Done:** Y (User tested the feature and reported the issue).
 
 **All Pending/In progress Issue list**:
-There are no pending bugs or issues. The agent is starting a new feature implementation.
+-   **Issue 1: Irrelevant Visuals in Infographic Generation** (Priority: P0)
+
+**Issues Detail:**
+-   **Issue 1: Irrelevant Visuals in Infographic Generation**
+    -   **Attempted fixes:** The agent previously implemented a sophisticated canvas renderer and updated the backend prompt to include a  in the generated JSON. However, the current logic relies on simple keyword matching, which results in the AI model suggesting nonsensical visuals for the given text sections.
+    -   **Next debug checklist:**
+        1.  Analyze the user-provided image from message #286 to understand a concrete example of the failure.
+        2.  Refine the backend prompt in . Instruct the LLM to only select a  if it is logically and contextually appropriate for the data. The prompt should enforce a justification for the choice and explicitly allow for a none or text-only type if no visual is suitable.
+        3.  Update the  function in  to gracefully handle the none visualization type, ensuring it renders a clean, text-only card in such cases.
+    -   **Why fix this issue and what will be achieved with the fix?** To meet the user's core requirement for a capable infographic generator that produces meaningful, high-quality visuals. This will fix a major user experience flaw in a key feature.
+    -   **Status:** NOT STARTED
+    -   **Is recurring issue?** Y
+    -   **Should Test frontend/backend/both after fix?** Both
+    -   **Blocked on other issue:** No
 
 **In progress Task List**:
--   **Task 1: Implement the Saudi Healthcare Command Theme UI Redesign** (Priority: P0)
-    -   **Where to resume:** The agent has already fetched a background image and saved it as . The next step is a complete overhaul of  and its associated CSS. This involves rewriting the JSX and styles to implement the new color scheme, fonts, layout, and textual changes according to the user's detailed specification.
-    -   **What will be achieved with this?** The application will be visually transformed into a Healthcare Insight Command platform, aligning with the Saudi Ministry of Health's aesthetic, while retaining all its analytical and generative functionalities.
-    -   **Status:** NOT STARTED
-    -   **Should Test frontend/backend/both after fix?** Frontend
-    -   **Blocked on something:** No.
+There are no other tasks in progress.
 
 **Upcoming and Future Tasks**
-There are no other upcoming tasks. The sole focus is on the complete UI redesign.
+There are no explicit upcoming tasks requested by the user. The entire focus is on resolving the infographic quality issue.
 
 **Completed work in this session**
--   **Asynchronous Image Generation:** Fixed a gateway timeout error during PPT generation by making AI image creation an asynchronous background process.
--   **DOCX Content Extraction:** Resolved a critical bug where the AI was not using the content of  files. Implemented  on the backend to correctly parse and extract text from these documents.
--   **AI-Powered Infographics:** Implemented a new feature to generate and export infographics as PNG files, with AI-generated content and layout based on source documents.
--   **Enhanced PPTX Generation:** Upgraded the slide deck feature to produce professional presentations with themes, varied layouts, icons, and AI-generated images using .
--   **Output Persistence:** Implemented backend endpoints and frontend logic to save all generated outputs (PPTs, infographics) to the database, ensuring they persist across user sessions.
--   **Multiple Bug Fixes:** Addressed various issues, including incorrect file export formats, empty initial outputs, and a JavaScript error () during async image generation.
+-   **File Type Expansion:** Successfully integrated support for uploading and processing , , and image files for content sourcing.
+-   **Theme Toggle Implementation:** Completed the dark/light theme switcher by replacing all hardcoded color values in  with CSS variables.
+-   **Infographic Generation Overhaul:**
+    -   Rewrote the infographic renderer using the Canvas API to support complex layouts, data visualizations (donut charts, bar charts, workflow diagrams), and icons.
+    -   Created an inline canvas preview for infographics within the output modal.
+    -   Enhanced the backend prompt to produce structured JSON data for rendering.
+-   **Bug Fix:** Resolved a  error in the Delete Source confirmation dialog.
 
 **Earlier issues found/mentioned but not fixed**
-None. All issues raised by the user in this session were addressed and fixed.
+None.
 
 **Known issue recurrence from previous fork**
 None.
@@ -54,78 +60,76 @@ None.
 
 
 **Key Technical Concepts**
--   **Frontend:** React.js,  (for PPTX generation), HTML Canvas API (for infographic rendering).
--   **Backend:** FastAPI (Python), Pydantic.
--   **Database:** MongoDB.
--   **AI Integration:** AI content generation using GPT-5.1 and image generation using Gemini Nano Banana, both accessed via the Emergent LLM Key.
--   **File Parsing:**  for PDFs and  for DOCX files.
--   **Asynchronous Processing:** Long-running image generation tasks are offloaded to asynchronous API calls to avoid request timeouts.
+-   **Frontend:** React.js, React Context API, CSS Custom Properties, HTML5 Canvas API for dynamic image generation.
+-   **Backend:** FastAPI (Python), file processing libraries (, , , , ), OpenAI for text and vision.
+-   **AI:** Prompt engineering for structured JSON generation, controlling content and visual suggestions.
 
 **key DB schema**
 -   **sources**: 
 -   **outputs**: 
 
 **changes in tech stack**
--   **Added ** to the backend for parsing Microsoft Word documents.
--   **Added ** for AI image generation.
+-   **Backend dependencies added:** , , , .
 
 **All files of reference**
--   : The single, monolithic React component containing the entire application's UI and logic. This file will be the primary focus of the redesign.
--   : The FastAPI backend file containing all API endpoints, including logic for file processing, AI generation, and database interactions.
--   : The primary CSS file. It will need to be completely rewritten to implement the new theme.
--   : The background image selected by the agent for the new theme.
+-   : Contains the primary UI logic and the  canvas rendering function that needs modification.
+-   : Contains the  endpoint and the AI prompt for infographic data generation, which needs to be refined.
+-   : Tracks overall product requirements and progress.
 
 **Areas that need refactoring**:
-The  file is over 2000 lines long and handles all UI, state, and API calls. Breaking it down into smaller, specialized components (e.g., , , ) and using custom hooks for logic would significantly improve maintainability. This is not the current task but should be considered for future development.
+-   The  file has grown to an unmanageable size. The complex infographic rendering logic ( and its helper functions) should be extracted into a dedicated utility module (e.g., ) to improve modularity and maintainability.
 
 **key api endpoints**
--   : Uploads and processes source documents.
--   : Generates outputs like slide decks and infographics based on a specified type.
--   : Retrieves all processed source documents.
--   : Retrieves all persisted generated outputs.
--   : Saves a newly generated output to the database.
--   : Asynchronously generates an image for a specific slide within a presentation.
+-   : Handles file uploads for various types (.docx, .pdf, .xlsx, .pptx, images).
+-   : Generates content for outputs, including the structured JSON for infographics.
+-   : Deletes a specified source file.
 
 **Critical Info for New Agent**
--   The user's request for the Saudi Healthcare Command Theme is extremely detailed. You must follow the provided specifications for colors, fonts, layouts, and text renaming **exactly**.
--   This is a **visual redesign only**. All existing backend and frontend functionality must be preserved. The primary work will be in  and its associated CSS.
--   Use the background image already prepared at .
--   The task requires changing not just styles but also static text within the UI to match the new Health Intelligence theme.
+-   Your immediate and only task is to fix the infographic quality. The user explicitly stated that the visuals are irrelevant and thrown randomly.
+-   The core of the problem lies in the AI prompt. The model is forced to pick a visual type without properly considering the context.
+-   **Your plan should be:**
+    1.  Propose a plan to the user that focuses on making the AI prompt in  more intelligent. It must be instructed to choose visuals only when they are contextually relevant and be allowed to return none as a valid .
+    2.  Modify the frontend rendering code in  to correctly interpret the none type and render a clean, text-only card.
+    3.  Thoroughly test by generating a new infographic on a topic that has both statistical and purely textual information. Verify that charts appear for the stats and no visuals appear for the text. Use a screenshot to show the final, correct output to the user.
 
 **documents and test reports created in this job**
--   
+-    (updated)
+-   Multiple test reports in , with the latest being .
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Transform the Platform UI into Saudi Healthcare Command Theme. (PENDING - This is the current task)
-2.  **User:** Reported  error. (COMPLETED)
-3.  **User:** Do the same thing for the infographic. (COMPLETED)
-4.  **User:** I want images to be generated as well. (COMPLETED)
-5.  **User:** I need fancy ppt layout with pictures and theme. (COMPLETED)
-6.  **User:** The generated ppt is not using the uploaded document. (COMPLETED)
-7.  **User:** The generate ppt doesn't use the sources I uploaded. (COMPLETED)
-8.  **User:** Clarified that PPT generation should be based on real AI analysis of sources. (COMPLETED)
-9.  **User:** Reported an issue with exported documents being corrupted. (COMPLETED)
-10. **User:** I am receiving a failure error when I generate a deck. (COMPLETED)
+1.  **User:** only add the visuals when relevant, not to throw them randomly any where. The attached is what I am getting, the visuals aren't making sense (PENDING - This is the current task).
+2.  **Agent:**  tool call summary for the previous infographic enhancement.
+3.  **User:** it is better now, but still having misplaced statements as you see in the first inforgraphic... I want the egenration to be as fancy as possible and capable (PARTIALLY RESOLVED - Led to the current issue of irrelevant visuals).
+4.  **Agent:**  tool call summary for the first infographic enhancement.
+5.  **User:** Enhance the output of the infographic generation... (RESOLVED - This initiated the multi-step infographic work).
+6.  **Agent:**  tool call summary for the  bug fix.
+7.  **User:** when I clicked on delete source, I received the following error (RESOLVED).
+8.  **Agent:**  tool call summary for adding new file types.
+9.  **User:** Next I want the add source to accept and read properly excel sheet, ppts, images, pdfs as well. Do the entire testing end to end (RESOLVED).
+10. **Agent:**  tool call summary for completing the theme toggle.
 
 **Project Health Check:**
--   **Broken:** None.
--   **Mocked:** None. The application is fully functional.
+-   **Broken:** The core logic of the infographic generation feature is flawed, as it produces contextually irrelevant visuals, failing to meet the user's primary requirement for this feature.
+-   **Mocked:** None.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-5.1** — uses Emergent LLM Key
--   **Gemini Nano Banana (Image Generation)** — uses Emergent LLM Key
--   **pptxgenjs** (Frontend library for PPTX generation)
--   **pdfjs-dist** (Frontend library for PDF parsing)
--   **python-docx** (Backend library for DOCX parsing)
+-   **pptxgenjs** (Frontend library)
+-   **pdfjs-dist** (Frontend library)
+-   **python-docx** (Backend library)
+-   **openpyxl** (Backend library)
+-   **python-pptx** (Backend library)
+-   **Pillow** (Backend library)
+-   **pypdf** (Backend library)
 
 **Testing status**
 -   **Testing agent used after significant changes:** YES
 -   **Troubleshoot agent used after agent stuck in loop:** NO
--   **Test files created:** None
--   **Known regressions:** None
+-   **Test files created:** Yes, temporary files (, , etc.) were created for  testing.
+-   **Known regressions:** None.
 
 **Credentials to test flow:**
-No user-provided credentials are required. The application uses the Emergent LLM Key, which is automatically available in the environment.
+None required for this application.
 
 **What agent forgot to execute**
-Nothing. The agent successfully completed all prior feature requests and bug fixes before receiving the new, major UI redesign task. It was at the very beginning of this new task when the session concluded.</analysis>
+The agent did not forget a task but failed to implement the infographic feature to the required quality standard. The logic for selecting visualizations was too simplistic and did not account for contextual relevance, which is what the agent must fix now.</analysis>

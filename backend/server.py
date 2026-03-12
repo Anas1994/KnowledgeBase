@@ -876,15 +876,23 @@ SOURCES: {', '.join(sources)}
 CONTENT:
 {content}
 
-Create an infographic with 6-7 sections. IMPORTANT: Vary the visual types across sections for visual variety.
+Create an infographic with 6-7 sections that accurately represent the source content.
+
+CRITICAL RULES FOR VISUAL TYPE SELECTION:
+- Only assign a visualType when the section content GENUINELY supports it.
+- "stat" → ONLY if the section has a real percentage or measurable numeric stat extracted from the content (e.g., "85% success rate", "92% coverage"). Do NOT invent statistics.
+- "process" → ONLY if the section describes a clear sequential process with numbered steps (e.g., "4 Stages of Development").
+- "comparison" → ONLY if the section compares multiple items with quantifiable differences.
+- "none" → Use this for sections that are purely descriptive, conceptual, or qualitative. This is the DEFAULT. Most sections should use "none" unless there is a strong data-driven reason for a visual.
 
 For each section provide:
 1. A clear section title (max 6 words)
-2. A key statistic. IMPORTANT: At least 2 sections MUST have percentage stats (e.g., "85%", "92%"). Other sections should use counts like "4 Stages", "$2.5M", "18+ Modules"
-3. A short stat label (under 5 words) describing the stat
-4. 3-4 detailed bullet points (15-25 words each)
+2. A key statistic ONLY if one genuinely exists in the source content. If no real stat exists, use an empty string "".
+3. A short stat label (under 5 words) — empty string if no stat
+4. 3-4 detailed bullet points (15-25 words each) drawn from the actual content
 5. An icon from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
-6. A visual type - MUST use variety: at least 1 "process" (for steps/stages), at least 2 "stat" (for percentages/numbers), and distribute "list", "comparison", "timeline" across remaining sections
+6. visualType: one of "stat", "process", "comparison", or "none". Default to "none" unless data clearly justifies a visual.
+7. visualReason: A brief 5-10 word justification for your visualType choice.
 
 Format your response as JSON array:
 [
@@ -896,11 +904,12 @@ Format your response as JSON array:
     "bullets": ["Point 1", "Point 2"],
     "icon": "chart",
     "visualType": "stat",
+    "visualReason": "Content contains a specific percentage metric",
     "color": "blue"
   }}
 ]
 
-Use varied visual types. Start with a header section and end with a call-to-action or summary.
+IMPORTANT: Do NOT fabricate statistics. If the source content doesn't contain real numbers or percentages, set stat to "" and visualType to "none". It is better to have a clean text section than a misleading chart.
 Only output the JSON array, no other text."""
 
     response = await generate_with_ai(prompt, "You are an expert infographic designer. Create visually engaging, data-driven infographic content.")
@@ -917,7 +926,7 @@ Only output the JSON array, no other text."""
         
         # Ensure all sections have required fields
         for section in infographic_data:
-            section.setdefault('visualType', 'list')
+            section.setdefault('visualType', 'none')
             section.setdefault('icon', 'briefcase')
             section.setdefault('stat', '')
             section.setdefault('statLabel', '')
@@ -926,8 +935,8 @@ Only output the JSON array, no other text."""
     except Exception as e:
         logger.error(f"Infographic JSON parse error: {e}")
         infographic_data = [
-            {"sectionNumber": 1, "title": title, "stat": str(len(sources)), "statLabel": "Sources Analyzed", "bullets": [], "icon": "chart", "visualType": "stat", "color": "blue"},
-            {"sectionNumber": 2, "title": "Key Findings", "bullets": ["Analysis generated from source documents"], "icon": "lightbulb", "visualType": "list", "color": "green"}
+            {"sectionNumber": 1, "title": title, "stat": str(len(sources)), "statLabel": "Sources Analyzed", "bullets": [], "icon": "chart", "visualType": "none", "color": "blue"},
+            {"sectionNumber": 2, "title": "Key Findings", "bullets": ["Analysis generated from source documents"], "icon": "lightbulb", "visualType": "none", "color": "green"}
         ]
     
     # Determine theme based on content

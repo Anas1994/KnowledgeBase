@@ -1525,8 +1525,9 @@ export default function HealthOS() {
           let h = CARD_PAD + 32; // top pad + title row
           const hasPercent = isPercent(sec.stat);
           const statNum = parseStatNum(sec.stat);
-          const vType = sec.visualType || 'stat';
-          if (vType === 'process' && statNum) h += 68; // workflow
+          const vType = sec.visualType || 'none';
+          if (vType === 'none' || (!sec.stat && vType !== 'process')) h += 10; // text-only card
+          else if (vType === 'process') h += 68; // workflow
           else if (hasPercent) h += 110; // LARGE donut
           else if (vType === 'comparison') h += 110; // horizontal bars
           else if (sec.stat) h += 90; // stat + mini chart
@@ -1652,7 +1653,7 @@ export default function HealthOS() {
           const iconName = section.icon || 'briefcase';
           const statNum = parseStatNum(section.stat);
           const hasPct = isPercent(section.stat);
-          const vType = section.visualType || 'stat';
+          const vType = section.visualType || 'none';
 
           // Card shadow
           ctx.shadowColor = 'rgba(0,0,0,0.06)';
@@ -1701,9 +1702,13 @@ export default function HealthOS() {
           cy += 12 + tLines.length * 20 + 8;
 
           // ── Visualization Area ──
-          if (vType === 'process' && statNum) {
-            // Workflow steps diagram
-            const steps = statNum;
+          // Only render visuals when the type is explicitly data-driven
+          if (vType === 'none' || (!section.stat && vType !== 'process')) {
+            // Text-only card - no visual, just a subtle accent
+            cy += 4;
+          } else if (vType === 'process') {
+            // Workflow steps diagram - use statNum or bullet count as step count
+            const steps = statNum || Math.min((section.bullets || []).length, 5) || 3;
             const wfH = drawWorkflow(ctx, cx, cy, contentW, steps, color);
             cy += wfH;
             if (section.stat) {
