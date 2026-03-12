@@ -1,72 +1,40 @@
 # HealthOS - Health Intelligence Workspace
 
 ## Original Problem Statement
-Build an AI-powered research workspace with source document upload, AI chat, and output generation. Enhanced with Saudi-themed dual themes, localization, extended file support, and professional infographic generation.
+Build a healthcare research workspace with dual-theme UI (Saudi Healthcare Command dark / Saudi Vision light), English/Arabic localization with RTL, multi-format source ingestion, and AI-powered content generation including professional infographics.
 
-## What's Been Implemented
+## Core Requirements
+- **UI & Theming**: Dark/light theme toggle with CSS custom properties
+- **Localization**: English/Arabic with full RTL support
+- **Source Ingestion**: Accept .docx, .pdf, .xlsx, .pptx, and image files
+- **Content Generation**: Slides, reports, mind maps, flashcards, quizzes, audio scripts, data tables, infographics
+- **Infographic Generation**: Visually rich, professional, and contextually relevant infographics with intelligent visual selection
 
-### Core Features
-- Source upload & indexing (PDF, DOCX, TXT, XLSX, PPTX, Images)
-- AI chat with source context (GPT-5.1)
-- Studio output generation (Slides, Infographics, Reports, etc.)
-- AI image generation (Gemini Nano Banana)
-- PPTX/PNG export
+## Architecture
+- **Frontend**: React.js, Context API, CSS Custom Properties, HTML5 Canvas
+- **Backend**: FastAPI, MongoDB, OpenAI (Emergent LLM Key)
+- **Libraries**: openpyxl, python-pptx, Pillow, pypdf, python-docx, pptxgenjs, pdfjs-dist
 
-### Dual Theme System (Feb 2026)
-- Light "Saudi Vision 2030" + Dark "Saudi Healthcare Command" themes
-- Sun/moon toggle with 60+ CSS custom properties
+## Key Files
+- `/app/frontend/src/components/NotebookLM_Workspace.jsx` - Main UI + Canvas infographic renderer
+- `/app/backend/server.py` - API endpoints + AI generation logic
+- `/app/frontend/src/contexts/LanguageContext.jsx` - i18n
+- `/app/frontend/src/contexts/ThemeContext.jsx` - Theme toggle
 
-### Localization (Feb 2026)
-- English/Arabic with RTL support, 200+ translated keys
+## Database Schema
+- **sources**: {filename, filetype, content, chunks, status, created_at}
+- **outputs**: {title, type, sources, content, slides_data, created_at}
 
-### Extended File Support (Feb 2026)
-- Excel (.xlsx): openpyxl extraction
-- PowerPoint (.pptx): python-pptx text extraction
-- Images (.png/.jpg/.jpeg): AI vision via GPT-5.1 ImageContent
-- PDF, DOCX, TXT (existing)
+## What's Implemented
+- [x] Dual theme (dark/light) with toggle
+- [x] English/Arabic localization with RTL
+- [x] Source upload: .docx, .pdf, .xlsx, .pptx, images
+- [x] All generation types: slides, report, mindmap, flashcards, quiz, audio, datatable, infographic
+- [x] Canvas-based infographic with header image generation
+- [x] Contextual visual selection for infographics (visualType: none/stat/process/comparison) - Fixed Mar 12, 2026
 
-### Enhanced Infographic Generation (Feb 2026)
-- **Canvas Renderer** (1400px wide, dynamic height):
-  - Gradient header with title, gold diamond divider, section badges, color indicators
-  - 2-column card grid with colored left borders, numbered badges
-  - **Donut charts** for percentage-based stats with gradient arcs + progress bars
-  - **Workflow diagrams** for process types (connected numbered circles with arrows)
-  - **Horizontal bar charts** for comparison data with gradient fills + shine effects
-  - **Mini vertical bar charts** for numeric stats with gradient fills
-  - 12 geometric icon types with glow background circles
-  - Timeline dots on left margin connecting rows
-  - Dynamic card height calculation based on content
-  - Word-wrapped bullets with colored dot markers
-  - Subtle dot grid pattern background
-  - Professional footer with gold accent line
-- **Visual Preview**: Modal shows infographic as styled card grid (not raw text)
-- **AI Prompt**: Requests diverse visualTypes (process, stat, comparison) + percentage stats
+## Completed Fix Log
+- **Mar 12, 2026**: Fixed irrelevant visuals in infographic generation. Backend AI prompt now defaults to `visualType: "none"` for descriptive content. Frontend renders clean text-only cards when no visual is warranted. Tested: 100% pass rate.
 
-## Key API Endpoints
-- `POST /api/sources/upload` — Upload docs (PDF, DOCX, TXT, XLSX, PPTX, images)
-- `POST /api/generate` — Generate outputs (slides, infographic, report, etc.)
-- `POST /api/chat` — AI chat with source context
-- `GET /api/sources`, `GET /api/outputs`, `POST /api/outputs`
-- `DELETE /api/sources/{id}`, `DELETE /api/outputs/{id}`
-
-## DB Schema
-- **sources**: `{id, title, type, content, chunks, size, status, url, notebook_id, created_at}`
-- **outputs**: `{id, type, title, content, slides_data, notebook_id, created_at, size}`
-
-## 3rd Party Integrations
-- OpenAI GPT-5.1 (Emergent LLM Key) — text gen + image vision
-- Gemini Nano Banana (Emergent LLM Key) — image gen
-- openpyxl, python-pptx, python-docx, PyPDF2, Pillow
-- pptxgenjs, pdfjs-dist (frontend)
-
-## Prioritized Backlog
-### P1
-1. Break down NotebookLM_Workspace.jsx (~2800 lines) into smaller components
-2. User authentication
-3. Persist theme preference in localStorage
-
-### P2
-1. Collaborative editing
-2. More AI output types with actual generation
-3. Google Drive integration
-4. Notebook export (JSON, CSV, ZIP)
+## Backlog
+- P2: Extract infographic rendering logic from NotebookLM_Workspace.jsx into a utility module for maintainability
