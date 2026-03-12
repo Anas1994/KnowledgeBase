@@ -106,8 +106,8 @@ const Confirm = ({ msg, onYes, onNo }) => (
     <div style={{ background: "var(--bg-modal)", borderRadius: 20, padding: 28, width: 380, boxShadow: "var(--shadow-heavy)" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 20 }}>{msg}</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button onClick={onNo} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--bg-light)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{cancelLabel || "Cancel"}</button>
-        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--danger)", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{confirmLabel || "Delete"}</button>
+        <button onClick={onNo} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--bg-light)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Cancel</button>
+        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--danger)", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Delete</button>
       </div>
     </div>
   </div>
