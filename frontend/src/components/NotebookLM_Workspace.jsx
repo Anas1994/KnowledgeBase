@@ -771,7 +771,8 @@ export default function HealthOS() {
             slide_title: item.title,
             slide_content: (item.bullets || []).join(' '),
             layout: item.layout || item.visualType || 'bullets',
-            theme: output.theme || 'corporate'
+            theme: output.theme || 'corporate',
+            image_keyword: item.imageKeyword || ''
           })
         });
         
@@ -872,13 +873,13 @@ export default function HealthOS() {
       bgColor: 'F0FDFA'
     },
     health: {
-      primary: 'EC4899',      // Pink
-      secondary: 'F472B6',
-      accent: 'F9A8D4',
-      dark: '9D174D',
-      light: 'FCE7F3',
-      gradient: ['9D174D', 'EC4899'],
-      bgColor: 'FDF2F8'
+      primary: '004D40',      // Dark teal (Saudi Healthcare)
+      secondary: '006C5B',
+      accent: 'C8A86B',       // Gold accent
+      dark: '00332B',
+      light: 'E0F2F1',
+      gradient: ['004D40', '006C5B'],
+      bgColor: 'F5FAF9'
     },
     education: {
       primary: 'F59E0B',      // Amber
@@ -919,379 +920,349 @@ export default function HealthOS() {
     // For slides, generate professional PPTX file
     if (out.type === "slides" && out.slides_data && out.slides_data.length > 0) {
       try {
-        toast("Creating professional presentation...", "warn");
         const PptxGenJS = await loadPptxGen();
         const pptx = new PptxGenJS();
         pptx.author = 'HealthOS';
         pptx.title = out.title;
         pptx.subject = 'AI-Generated Professional Presentation';
+        pptx.layout = 'LAYOUT_16x9';
         
-        // Get theme (default to corporate)
         const themeName = out.theme || 'corporate';
         const theme = THEMES[themeName] || THEMES.corporate;
-        
-        // Define master slide with theme
+
+        // ── Helper: add consistent title bar to content slides ──
+        const addTitle = (slide, title) => {
+          slide.addShape('rect', { x: 0, y: 0.22, w: 0.1, h: 0.6, fill: { color: theme.accent } });
+          slide.addText(title, {
+            x: 0.35, y: 0.22, w: 8.5, h: 0.6,
+            fontSize: 24, bold: true, color: theme.dark,
+            fontFace: 'Calibri', valign: 'middle'
+          });
+        };
+
+        // ── Helper: nice image placeholder when no image available ──
+        const addPlaceholder = (slide, x, y, w, h) => {
+          slide.addShape('roundRect', {
+            x, y, w, h,
+            fill: { color: theme.light },
+            line: { color: theme.secondary, width: 1, dashType: 'dash' },
+            rectRadius: 0.1
+          });
+          slide.addShape('ellipse', {
+            x: x + w / 2 - 0.35, y: y + h / 2 - 0.35, w: 0.7, h: 0.7,
+            fill: { color: theme.primary, transparency: 75 }
+          });
+        };
+
+        // ── Generate images for slides that need them ──
+        const imageSlidesIdx = out.slides_data
+          .map((s, i) => ({ s, i }))
+          .filter(({ s, i }) => i > 0 && !s.imageBase64 && ['image-left', 'image-right'].includes(s.layout))
+          .slice(0, 4);
+
+        if (imageSlidesIdx.length > 0) {
+          toast(`Generating ${imageSlidesIdx.length} slide images — this may take a moment...`, "warn");
+          const imagePromises = imageSlidesIdx.map(async ({ s }) => {
+            try {
+              const res = await fetch(`${API_URL}/api/generate-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  slide_title: s.title,
+                  slide_content: (s.bullets || []).join(', '),
+                  layout: s.layout || 'bullets',
+                  theme: themeName,
+                  image_keyword: s.imageKeyword || ''
+                })
+              });
+              if (res.ok) {
+                const result = await res.json();
+                if (result.success && result.imageBase64) {
+                  s.imageBase64 = result.imageBase64;
+                }
+              }
+            } catch (e) {
+              console.error('Image gen failed:', s.title);
+            }
+          });
+          await Promise.all(imagePromises);
+          toast("Images ready! Building presentation...");
+        } else {
+          toast("Building presentation...", "warn");
+        }
+
+        // ── Define Slide Masters ──
         pptx.defineSlideMaster({
-          title: 'THEMED_SLIDE',
+          title: 'CONTENT',
           background: { color: theme.bgColor },
           objects: [
-            // Top accent bar
-            { rect: { x: 0, y: 0, w: '100%', h: 0.15, fill: { color: theme.primary } } },
-            // Bottom accent line
-            { rect: { x: 0, y: 5.4, w: '100%', h: 0.1, fill: { color: theme.accent } } },
-            // Decorative corner shape
-            { rect: { x: 9.2, y: 0, w: 0.8, h: 0.8, fill: { color: theme.secondary, transparency: 70 } } }
-          ]
-        });
-        
-        // Title slide master
-        pptx.defineSlideMaster({
-          title: 'TITLE_SLIDE',
-          background: { color: theme.dark },
-          objects: [
-            // Large decorative circle
-            { 'ellipse': { x: 7, y: -1, w: 4, h: 4, fill: { color: theme.secondary, transparency: 80 } } },
-            { 'ellipse': { x: -1, y: 3, w: 3, h: 3, fill: { color: theme.accent, transparency: 85 } } },
-            // Bottom gradient bar
-            { rect: { x: 0, y: 5, w: '100%', h: 0.5, fill: { color: theme.primary } } }
+            { rect: { x: 0, y: 0, w: '100%', h: 0.06, fill: { color: theme.primary } } },
+            { rect: { x: 0, y: 5.25, w: '100%', h: 0.38, fill: { color: theme.primary } } },
+            { text: { text: 'HealthOS', options: { x: 0.4, y: 5.28, w: 2, h: 0.3, fontSize: 8, color: theme.accent, fontFace: 'Calibri' } } },
           ]
         });
 
-        out.slides_data.forEach((slideData, index) => {
-          const layout = slideData.layout || 'bullets';
-          const isTitle = index === 0 || layout === 'title';
-          
-          // Create slide with appropriate master
-          const slide = pptx.addSlide({ masterName: isTitle ? 'TITLE_SLIDE' : 'THEMED_SLIDE' });
-          
+        pptx.defineSlideMaster({
+          title: 'COVER',
+          background: { color: theme.dark },
+          objects: [
+            { rect: { x: 0, y: 0, w: '100%', h: 0.05, fill: { color: theme.accent } } },
+            { ellipse: { x: 7.8, y: -1.2, w: 3.5, h: 3.5, fill: { color: theme.secondary, transparency: 88 } } },
+            { ellipse: { x: -1.2, y: 3.8, w: 2.5, h: 2.5, fill: { color: theme.accent, transparency: 92 } } },
+            { rect: { x: 0, y: 5.05, w: '100%', h: 0.58, fill: { color: theme.primary } } },
+          ]
+        });
+
+        // ── Build each slide ──
+        out.slides_data.forEach((sd, idx) => {
+          const layout = sd.layout || 'bullets';
+          const isTitle = idx === 0 || layout === 'title';
+          const slide = pptx.addSlide({ masterName: isTitle ? 'COVER' : 'CONTENT' });
+
           if (isTitle) {
-            // === TITLE SLIDE ===
-            // Main title
-            slide.addText(slideData.title || out.title, {
-              x: 0.5, y: 1.8, w: 9, h: 1.2,
-              fontSize: 44, bold: true, color: 'FFFFFF',
-              fontFace: 'Arial',
-              align: 'center', valign: 'middle'
+            // ═══ TITLE / COVER SLIDE ═══
+            slide.addText(sd.title || out.title, {
+              x: 0.8, y: 1.3, w: 8.4, h: 1.0,
+              fontSize: 36, bold: true, color: 'FFFFFF',
+              fontFace: 'Calibri', align: 'center', valign: 'middle'
             });
-            
-            // Subtitle
-            const subtitle = slideData.subtitle || slideData.bullets?.[0] || '';
-            if (subtitle) {
-              slide.addText(subtitle, {
-                x: 0.5, y: 3.2, w: 9, h: 0.6,
-                fontSize: 20, color: theme.light,
-                fontFace: 'Arial',
-                align: 'center'
+            slide.addShape('rect', { x: 3.8, y: 2.5, w: 2.4, h: 0.04, fill: { color: theme.accent } });
+            const sub = sd.subtitle || sd.bullets?.[0] || '';
+            if (sub) {
+              slide.addText(sub, {
+                x: 1.2, y: 2.75, w: 7.6, h: 0.55,
+                fontSize: 17, color: theme.light, fontFace: 'Calibri', align: 'center'
               });
             }
-            
-            // Decorative line under title
-            slide.addShape('rect', {
-              x: 3.5, y: 3, w: 3, h: 0.05,
-              fill: { color: theme.accent }
+            slide.addText('AI-Generated Presentation  |  HealthOS', {
+              x: 2.5, y: 4.6, w: 5, h: 0.3,
+              fontSize: 9, color: theme.accent, fontFace: 'Calibri', align: 'center'
             });
-            
+
           } else if (layout === 'two-column' || layout === 'comparison') {
-            // === TWO COLUMN LAYOUT ===
-            // Title with accent bar
-            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.4, y: 0.35, w: 9, h: 0.7,
-              fontSize: 28, bold: true, color: theme.dark,
-              fontFace: 'Arial'
-            });
-            
-            // Split bullets into two columns
-            const bullets = slideData.bullets || [];
-            const midPoint = Math.ceil(bullets.length / 2);
-            const leftBullets = bullets.slice(0, midPoint);
-            const rightBullets = bullets.slice(midPoint);
-            
-            // Left column with card background
+            // ═══ TWO-COLUMN ═══
+            addTitle(slide, sd.title || `Slide ${idx + 1}`);
+            const bullets = sd.bullets || [];
+            const mid = Math.ceil(bullets.length / 2);
+
+            // Left card
             slide.addShape('roundRect', {
-              x: 0.3, y: 1.3, w: 4.4, h: 3.5,
+              x: 0.35, y: 1.1, w: 4.4, h: 3.7,
               fill: { color: 'FFFFFF' },
-              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+              shadow: { type: 'outer', blur: 5, offset: 2, angle: 45, opacity: 0.08 },
+              rectRadius: 0.08
             });
-            
-            if (leftBullets.length > 0) {
-              slide.addText(leftBullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 12 } })), {
-                x: 0.5, y: 1.5, w: 4, h: 3,
-                fontSize: 16, color: '374151',
-                fontFace: 'Arial', valign: 'top'
+            slide.addShape('rect', { x: 0.35, y: 1.1, w: 4.4, h: 0.04, fill: { color: theme.primary } });
+            if (bullets.slice(0, mid).length > 0) {
+              slide.addText(bullets.slice(0, mid).map(b => ({
+                text: b, options: { bullet: { code: '25CF', color: theme.primary }, paraSpaceAfter: 12 }
+              })), {
+                x: 0.6, y: 1.35, w: 3.9, h: 3.2,
+                fontSize: 13, color: '374151', fontFace: 'Calibri', valign: 'top', lineSpacingMultiple: 1.35
               });
             }
-            
-            // Right column with card background
+
+            // Right card
             slide.addShape('roundRect', {
-              x: 5.3, y: 1.3, w: 4.4, h: 3.5,
+              x: 5.15, y: 1.1, w: 4.4, h: 3.7,
               fill: { color: 'FFFFFF' },
-              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+              shadow: { type: 'outer', blur: 5, offset: 2, angle: 45, opacity: 0.08 },
+              rectRadius: 0.08
             });
-            
-            if (rightBullets.length > 0) {
-              slide.addText(rightBullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 12 } })), {
-                x: 5.5, y: 1.5, w: 4, h: 3,
-                fontSize: 16, color: '374151',
-                fontFace: 'Arial', valign: 'top'
+            slide.addShape('rect', { x: 5.15, y: 1.1, w: 4.4, h: 0.04, fill: { color: theme.secondary } });
+            if (bullets.slice(mid).length > 0) {
+              slide.addText(bullets.slice(mid).map(b => ({
+                text: b, options: { bullet: { code: '25CF', color: theme.secondary }, paraSpaceAfter: 12 }
+              })), {
+                x: 5.4, y: 1.35, w: 3.9, h: 3.2,
+                fontSize: 13, color: '374151', fontFace: 'Calibri', valign: 'top', lineSpacingMultiple: 1.35
               });
             }
-            
+
           } else if (layout === 'timeline') {
-            // === TIMELINE LAYOUT ===
-            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.4, y: 0.35, w: 9, h: 0.7,
-              fontSize: 28, bold: true, color: theme.dark,
-              fontFace: 'Arial'
-            });
-            
-            // Timeline line
-            slide.addShape('rect', { x: 0.5, y: 2.5, w: 9, h: 0.05, fill: { color: theme.secondary } });
-            
-            // Timeline items
-            const bullets = slideData.bullets || [];
-            const itemWidth = 9 / Math.max(bullets.length, 1);
-            bullets.forEach((bullet, i) => {
-              const xPos = 0.5 + (i * itemWidth) + (itemWidth / 2) - 0.8;
-              
-              // Circle marker
+            // ═══ TIMELINE ═══
+            addTitle(slide, sd.title || `Slide ${idx + 1}`);
+            const items = sd.bullets || [];
+            const count = Math.min(items.length, 5);
+            const totalW = 8.8;
+            const startX = 0.6;
+            const itemW = totalW / count;
+            const lineY = 2.15;
+
+            slide.addShape('rect', { x: startX, y: lineY, w: totalW, h: 0.03, fill: { color: theme.secondary } });
+
+            items.slice(0, count).forEach((item, i) => {
+              const cx = startX + i * itemW + itemW / 2;
+              const cardW = Math.min(itemW - 0.15, 1.7);
+              // Circle
               slide.addShape('ellipse', {
-                x: xPos + 0.65, y: 2.35, w: 0.3, h: 0.3,
+                x: cx - 0.14, y: lineY - 0.12, w: 0.28, h: 0.28,
                 fill: { color: theme.primary }
               });
-              
-              // Card for content
-              slide.addShape('roundRect', {
-                x: xPos, y: 2.9, w: 1.6, h: 1.8,
-                fill: { color: 'FFFFFF' },
-                shadow: { type: 'outer', blur: 6, offset: 2, angle: 45, opacity: 0.12 }
-              });
-              
-              // Phase number
               slide.addText(`${i + 1}`, {
-                x: xPos, y: 3, w: 1.6, h: 0.4,
-                fontSize: 20, bold: true, color: theme.primary,
-                fontFace: 'Arial', align: 'center'
+                x: cx - 0.14, y: lineY - 0.12, w: 0.28, h: 0.28,
+                fontSize: 10, bold: true, color: 'FFFFFF',
+                fontFace: 'Calibri', align: 'center', valign: 'middle'
               });
-              
-              // Content
-              slide.addText(bullet, {
-                x: xPos + 0.1, y: 3.4, w: 1.4, h: 1.2,
-                fontSize: 11, color: '4B5563',
-                fontFace: 'Arial', align: 'center', valign: 'top'
+              // Card
+              slide.addShape('roundRect', {
+                x: cx - cardW / 2, y: lineY + 0.3, w: cardW, h: 2.5,
+                fill: { color: 'FFFFFF' },
+                shadow: { type: 'outer', blur: 3, offset: 1, angle: 45, opacity: 0.06 },
+                rectRadius: 0.06
+              });
+              slide.addShape('rect', {
+                x: cx - cardW / 2, y: lineY + 0.3, w: cardW, h: 0.03,
+                fill: { color: theme.primary }
+              });
+              slide.addText(item, {
+                x: cx - cardW / 2 + 0.08, y: lineY + 0.45, w: cardW - 0.16, h: 2.2,
+                fontSize: 10, color: '4B5563', fontFace: 'Calibri',
+                align: 'center', valign: 'top', lineSpacingMultiple: 1.25
               });
             });
-            
+
           } else if (layout === 'image-left' || layout === 'image-right') {
-            // === IMAGE LAYOUT ===
+            // ═══ IMAGE + CONTENT SPLIT ═══
             const isLeft = layout === 'image-left';
-            
-            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.4, y: 0.35, w: 9, h: 0.7,
-              fontSize: 28, bold: true, color: theme.dark,
-              fontFace: 'Arial'
-            });
-            
+            addTitle(slide, sd.title || `Slide ${idx + 1}`);
+
+            const imgX = isLeft ? 0.35 : 5.15;
+            const cntX = isLeft ? 5.15 : 0.35;
+
             // Image area
-            const imgX = isLeft ? 0.4 : 5.2;
-            
-            // If we have an AI-generated image, use it
-            if (slideData.imageBase64) {
+            if (sd.imageBase64) {
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${slideData.imageBase64}`,
-                  x: imgX, y: 1.3, w: 4.4, h: 3.5,
+                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  x: imgX, y: 1.1, w: 4.4, h: 3.7,
                   rounding: true
                 });
-              } catch (imgErr) {
-                console.error('Failed to add image:', imgErr);
-                // Fallback to placeholder
-                slide.addShape('roundRect', {
-                  x: imgX, y: 1.3, w: 4.4, h: 3.5,
-                  fill: { color: theme.light },
-                  line: { color: theme.secondary, width: 2 }
-                });
+              } catch (e) {
+                addPlaceholder(slide, imgX, 1.1, 4.4, 3.7);
               }
             } else {
-              // Placeholder with gradient
-              slide.addShape('roundRect', {
-                x: imgX, y: 1.3, w: 4.4, h: 3.5,
-                fill: { color: theme.light },
-                line: { color: theme.secondary, width: 2 }
-              });
-              
-              // Icon in center of placeholder
-              const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
-              slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'rect', {
-                x: imgX + 1.8, y: 2.4, w: 0.8, h: 0.8,
-                fill: { color: theme.primary, transparency: 30 }
-              });
+              addPlaceholder(slide, imgX, 1.1, 4.4, 3.7);
             }
-            
-            // Content on opposite side
-            const contentX = isLeft ? 5.2 : 0.4;
+
+            // Content card
             slide.addShape('roundRect', {
-              x: contentX, y: 1.3, w: 4.4, h: 3.5,
+              x: cntX, y: 1.1, w: 4.4, h: 3.7,
               fill: { color: 'FFFFFF' },
-              shadow: { type: 'outer', blur: 8, offset: 2, angle: 45, opacity: 0.15 }
+              shadow: { type: 'outer', blur: 5, offset: 2, angle: 45, opacity: 0.08 },
+              rectRadius: 0.08
             });
-            
-            if (slideData.bullets && slideData.bullets.length > 0) {
-              slide.addText(slideData.bullets.map(b => ({ text: '● ' + b + '\n', options: { paraSpaceAfter: 14 } })), {
-                x: contentX + 0.2, y: 1.5, w: 4, h: 3,
-                fontSize: 15, color: '374151',
-                fontFace: 'Arial', valign: 'top'
+            if (sd.bullets?.length > 0) {
+              slide.addText(sd.bullets.map(b => ({
+                text: b, options: { bullet: { code: '25CF', color: theme.primary }, paraSpaceAfter: 14 }
+              })), {
+                x: cntX + 0.25, y: 1.3, w: 3.9, h: 3.3,
+                fontSize: 13, color: '374151', fontFace: 'Calibri', valign: 'top', lineSpacingMultiple: 1.35
               });
             }
-            
+
           } else if (layout === 'quote') {
-            // === QUOTE LAYOUT ===
-            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.4, y: 0.35, w: 9, h: 0.7,
-              fontSize: 28, bold: true, color: theme.dark,
-              fontFace: 'Arial'
+            // ═══ QUOTE ═══
+            addTitle(slide, sd.title || `Slide ${idx + 1}`);
+            slide.addText('\u201C', {
+              x: 0.8, y: 1.1, w: 0.7, h: 0.7,
+              fontSize: 64, color: theme.light, fontFace: 'Georgia'
             });
-            
-            // Large quote mark
-            slide.addText('"', {
-              x: 0.5, y: 1.2, w: 1, h: 1,
-              fontSize: 80, color: theme.light,
-              fontFace: 'Georgia'
-            });
-            
-            // Quote content
-            const quoteText = slideData.highlight || slideData.bullets?.[0] || '';
-            slide.addText(quoteText, {
-              x: 1.5, y: 1.8, w: 7, h: 1.5,
-              fontSize: 24, italic: true, color: theme.dark,
+            const quote = sd.highlight || sd.bullets?.[0] || '';
+            slide.addText(quote, {
+              x: 1.4, y: 1.5, w: 7.2, h: 1.1,
+              fontSize: 20, italic: true, color: theme.dark,
               fontFace: 'Georgia', align: 'center', valign: 'middle'
             });
-            
-            // Additional bullets below
-            if (slideData.bullets && slideData.bullets.length > 1) {
-              slide.addText(slideData.bullets.slice(1).map(b => ({ text: '• ' + b + '\n', options: { paraSpaceAfter: 10 } })), {
-                x: 1, y: 3.5, w: 8, h: 1.5,
-                fontSize: 14, color: '6B7280',
-                fontFace: 'Arial', align: 'center'
+            if (sd.bullets?.length > 1) {
+              slide.addShape('roundRect', {
+                x: 0.6, y: 2.9, w: 8.8, h: 2.0,
+                fill: { color: 'FFFFFF' },
+                shadow: { type: 'outer', blur: 4, offset: 1, angle: 45, opacity: 0.06 },
+                rectRadius: 0.08
+              });
+              slide.addText(sd.bullets.slice(1).map(b => ({
+                text: b, options: { bullet: { code: '25CF', color: theme.secondary }, paraSpaceAfter: 10 }
+              })), {
+                x: 0.9, y: 3.1, w: 8.2, h: 1.6,
+                fontSize: 12, color: '6B7280', fontFace: 'Calibri', valign: 'top'
               });
             }
-            
+
           } else {
-            // === DEFAULT BULLETS LAYOUT (with optional image) ===
-            // Title with accent bar
-            slide.addShape('rect', { x: 0, y: 0.3, w: 0.15, h: 0.8, fill: { color: theme.primary } });
-            slide.addText(slideData.title || `Slide ${index + 1}`, {
-              x: 0.4, y: 0.35, w: 8, h: 0.7,
-              fontSize: 28, bold: true, color: theme.dark,
-              fontFace: 'Arial'
-            });
-            
-            // Icon in top right
-            const iconShape = ICON_SHAPES[slideData.icon] || ICON_SHAPES.briefcase;
-            slide.addShape(iconShape.type === 'ellipse' ? 'ellipse' : 'roundRect', {
-              x: 8.8, y: 0.25, w: 0.7, h: 0.7,
-              fill: { color: theme.secondary, transparency: 50 }
-            });
-            
-            // If we have an AI-generated image, use split layout
-            if (slideData.imageBase64) {
-              // Image on the right side
+            // ═══ DEFAULT BULLETS (with optional image on right) ═══
+            addTitle(slide, sd.title || `Slide ${idx + 1}`);
+
+            if (sd.imageBase64) {
+              // Split: bullets left, image right
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${slideData.imageBase64}`,
-                  x: 5.3, y: 1.2, w: 4.4, h: 3.6,
+                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  x: 5.15, y: 1.1, w: 4.4, h: 3.7,
                   rounding: true
                 });
-              } catch (imgErr) {
-                console.error('Failed to add image:', imgErr);
-              }
-              
-              // Content card on left
+              } catch (e) { /* skip */ }
+
               slide.addShape('roundRect', {
-                x: 0.3, y: 1.2, w: 4.8, h: 3.6,
+                x: 0.35, y: 1.1, w: 4.5, h: 3.7,
                 fill: { color: 'FFFFFF' },
-                shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
+                shadow: { type: 'outer', blur: 5, offset: 2, angle: 45, opacity: 0.08 },
+                rectRadius: 0.08
               });
-              
-              // Bullet points
-              if (slideData.bullets && slideData.bullets.length > 0) {
-                const bulletItems = slideData.bullets.map((b, i) => ({
-                  text: b + '\n',
-                  options: {
-                    bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
-                    paraSpaceAfter: 14,
-                    indentLevel: 0
-                  }
-                }));
-                
-                slide.addText(bulletItems, {
-                  x: 0.5, y: 1.4, w: 4.4, h: 3.2,
-                  fontSize: 15, color: '374151',
-                  fontFace: 'Arial', valign: 'top'
+              if (sd.bullets?.length > 0) {
+                slide.addText(sd.bullets.map(b => ({
+                  text: b, options: { bullet: { code: '25CF', color: theme.primary }, paraSpaceAfter: 14 }
+                })), {
+                  x: 0.6, y: 1.3, w: 4.0, h: 3.3,
+                  fontSize: 13, color: '374151', fontFace: 'Calibri', valign: 'top', lineSpacingMultiple: 1.35
                 });
               }
             } else {
-              // Standard full-width layout (no image)
+              // Full-width bullets
               slide.addShape('roundRect', {
-                x: 0.3, y: 1.2, w: 9.4, h: 3.6,
+                x: 0.35, y: 1.1, w: 9.3, h: 3.7,
                 fill: { color: 'FFFFFF' },
-                shadow: { type: 'outer', blur: 10, offset: 3, angle: 45, opacity: 0.12 }
+                shadow: { type: 'outer', blur: 5, offset: 2, angle: 45, opacity: 0.08 },
+                rectRadius: 0.08
               });
-              
-              // Bullet points with custom styling
-              if (slideData.bullets && slideData.bullets.length > 0) {
-                const bulletItems = slideData.bullets.map((b, i) => ({
-                  text: b + '\n',
-                  options: {
-                    bullet: { type: 'number', style: 'arabicPeriod', color: theme.primary },
-                    paraSpaceAfter: 16,
-                    indentLevel: 0
-                  }
-                }));
-                
-                slide.addText(bulletItems, {
-                  x: 0.6, y: 1.4, w: 8.8, h: 3.2,
-                  fontSize: 18, color: '374151',
-                  fontFace: 'Arial', valign: 'top'
+              if (sd.bullets?.length > 0) {
+                slide.addText(sd.bullets.map(b => ({
+                  text: b, options: { bullet: { code: '25CF', color: theme.primary }, paraSpaceAfter: 16 }
+                })), {
+                  x: 0.65, y: 1.3, w: 8.7, h: 3.3,
+                  fontSize: 15, color: '374151', fontFace: 'Calibri', valign: 'top', lineSpacingMultiple: 1.35
                 });
               }
             }
-            
-            // Highlight box if present
-            if (slideData.highlight) {
+
+            // Highlight box
+            if (sd.highlight) {
               slide.addShape('roundRect', {
-                x: 0.5, y: 4.6, w: 9, h: 0.5,
-                fill: { color: theme.light }
+                x: 0.4, y: 4.65, w: 9.2, h: 0.38,
+                fill: { color: theme.light }, rectRadius: 0.04
               });
-              slide.addText('💡 ' + slideData.highlight, {
-                x: 0.7, y: 4.65, w: 8.6, h: 0.4,
-                fontSize: 12, color: theme.dark, bold: true,
-                fontFace: 'Arial', valign: 'middle'
+              slide.addText(sd.highlight, {
+                x: 0.6, y: 4.68, w: 8.8, h: 0.32,
+                fontSize: 11, color: theme.dark, bold: true,
+                fontFace: 'Calibri', valign: 'middle'
               });
             }
           }
-          
-          // Add speaker notes
-          if (slideData.notes) {
-            slide.addNotes(slideData.notes);
-          }
-          
-          // Slide number (except title slide)
-          if (index > 0) {
-            slide.addText(`${index}`, {
-              x: 9.3, y: 5.15, w: 0.4, h: 0.25,
-              fontSize: 10, color: theme.secondary,
-              fontFace: 'Arial', align: 'center'
+
+          // Speaker notes
+          if (sd.notes) slide.addNotes(sd.notes);
+
+          // Slide number (skip title slide)
+          if (idx > 0) {
+            slide.addText(`${idx}`, {
+              x: 9.15, y: 5.28, w: 0.4, h: 0.25,
+              fontSize: 8, color: theme.accent, fontFace: 'Calibri', align: 'center'
             });
           }
         });
-        
-        // Download the PPTX
+
         await pptx.writeFile({ fileName: `${out.title.replace(/[<>:"/\\|?*]/g, "_")}.pptx` });
-        toast("Professional presentation downloaded!");
+        toast("Presentation downloaded!");
         return;
       } catch (e) {
         console.error('PPTX generation error:', e);

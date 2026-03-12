@@ -239,50 +239,41 @@ async def generate_with_ai(prompt: str, system_message: str = "You are an expert
         logger.error(f"AI generation error: {e}")
         raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
 
-async def generate_slide_image(slide_title: str, slide_content: str, layout_type: str, theme: str) -> Optional[str]:
-    """Generate a professional diagram/image for a slide using AI"""
+async def generate_slide_image(slide_title: str, slide_content: str, layout_type: str, theme: str, image_keyword: str = "") -> Optional[str]:
+    """Generate a professional, contextually relevant image for a slide using AI"""
     try:
-        # Create a detailed prompt for professional business diagrams
-        if layout_type == "timeline":
-            style = "professional timeline infographic with numbered steps, clean modern design, business presentation style"
-        elif layout_type == "two-column" or layout_type == "comparison":
-            style = "professional comparison diagram, side-by-side layout, clean icons, business infographic style"
-        elif layout_type == "image-left" or layout_type == "image-right":
-            style = "professional business diagram with icons and visual elements, clean modern infographic"
-        elif "ecosystem" in slide_content.lower() or "platform" in slide_content.lower():
-            style = "hub-and-spoke diagram showing connected system components, professional business architecture diagram"
-        elif "journey" in slide_content.lower() or "flow" in slide_content.lower() or "process" in slide_content.lower():
-            style = "professional process flow diagram with numbered steps and arrows, clean business style"
-        else:
-            style = "professional business infographic with icons and visual hierarchy, clean modern design"
+        # Use the image_keyword for more targeted image generation
+        context = image_keyword if image_keyword else slide_title
+        content_hint = slide_content[:200] if slide_content else context
         
         # Theme-specific colors
         theme_colors = {
-            'tech': 'blue and white color scheme',
-            'smart_home': 'green and teal color scheme',
-            'corporate': 'indigo and purple color scheme',
-            'finance': 'teal and cyan color scheme',
-            'health': 'pink and coral color scheme',
-            'education': 'amber and orange color scheme'
+            'tech': 'blue and white color scheme, technology aesthetic',
+            'smart_home': 'green and teal color scheme, modern smart home aesthetic',
+            'corporate': 'indigo and navy color scheme, corporate aesthetic',
+            'finance': 'teal and dark green color scheme, financial aesthetic',
+            'health': 'teal (#004D40) and warm gold (#C8A86B) color scheme, healthcare aesthetic',
+            'education': 'amber and warm orange color scheme, educational aesthetic'
         }
         color_scheme = theme_colors.get(theme, 'professional blue color scheme')
         
-        prompt = f"""Create a {style} for a business presentation slide.
+        prompt = f"""Create a professional, photorealistic illustration for a business presentation slide.
 
-Title: {slide_title}
-Key concepts: {slide_content[:300]}
+Topic: {context}
+Context: {content_hint}
 
 Style requirements:
 - {color_scheme}
-- Clean, minimal design suitable for PowerPoint
-- Professional corporate presentation quality
-- Clear visual hierarchy
-- No text labels (will be added separately)
-- White or light background
-- Modern flat design with subtle shadows
-- Abstract icons representing concepts"""
+- Clean, modern professional design suitable for a corporate presentation
+- Photorealistic or high-quality 3D rendered style
+- Subtle, relevant visual metaphor for the topic
+- Light or white background that blends well with slide content
+- No text, no labels, no words in the image
+- Landscape orientation (wider than tall)
+- Soft lighting, professional corporate feel
+- High resolution, crisp detail"""
 
-        logger.info(f"Generating image for slide: {slide_title}")
+        logger.info(f"Generating image for slide: {slide_title} (keyword: {image_keyword})")
         
         image_gen = OpenAIImageGeneration(api_key=EMERGENT_LLM_KEY)
         images = await image_gen.generate_images(
@@ -524,29 +515,42 @@ CONTENT:
 
 Create a presentation with exactly 8-10 slides. For each slide, provide:
 1. A clear, concise title (max 8 words)
-2. 3-5 bullet points with key insights (each bullet max 15 words)
+2. 3-5 bullet points with key insights (each bullet max 20 words)
 3. Speaker notes (2-3 sentences explaining the slide)
-4. Layout type: "title", "bullets", "two-column", "image-left", "image-right", "quote", "timeline", "comparison"
-5. An image search keyword (1-3 words) that represents this slide's content visually
-6. An icon name from this list that best represents the slide: home, briefcase, chart, users, cog, shield, cloud, mobile, check, lightbulb, rocket, target, clock, globe, lock, server, database, code, team, growth
+4. Layout type — choose the BEST fit for the content:
+   - "title" — ONLY for slide 1 (cover slide with subtitle)
+   - "image-right" — Use for 2-3 key concept slides where a visual would enhance understanding. The image will be AI-generated based on the imageKeyword.
+   - "image-left" — Use for 1-2 slides to add visual variety, alternating with image-right.
+   - "two-column" — Use for comparisons or when content naturally splits into two groups
+   - "timeline" — Use ONLY when content describes sequential phases/steps (max 4-5 steps)
+   - "bullets" — Default for content-heavy slides that don't fit other layouts
+   - "quote" — Use for a key takeaway or conclusion slide
+5. imageKeyword: A specific 2-4 word phrase describing what the image should show (e.g., "hospital patient monitoring", "digital health dashboard", "team collaboration meeting"). This keyword drives the AI image generator — be specific and relevant.
+6. An icon from: home, briefcase, chart, users, cog, shield, cloud, mobile, check, lightbulb, rocket, target, clock, globe, lock, server, database, code, team, growth
+7. highlight: A key phrase to emphasize (optional, max 10 words)
+
+LAYOUT DISTRIBUTION RULES:
+- Slide 1 MUST be "title"
+- Use "image-left" or "image-right" for 3-4 slides total (these will have AI-generated images)
+- Use "two-column" or "timeline" for 1-2 slides
+- Use "bullets" for 2-3 content-heavy slides
+- End with "quote" or "bullets" for conclusion
 
 Format your response as JSON array:
 [
   {{
     "slideNumber": 1,
     "title": "Slide Title Here",
-    "subtitle": "Optional subtitle for title slides",
+    "subtitle": "Descriptive subtitle for the presentation",
     "bullets": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
     "notes": "Speaker notes explaining this slide content.",
     "layout": "title",
-    "imageKeyword": "technology innovation",
+    "imageKeyword": "topic relevant visual",
     "icon": "rocket",
-    "highlight": "Key phrase to emphasize"
+    "highlight": ""
   }}
 ]
 
-Slide 1 should be "title" layout with subtitle.
-Include variety of layouts: use "two-column" for comparisons, "timeline" for phases, "image-left/right" for key concepts.
 Only output the JSON array, no other text."""
 
     response = await generate_with_ai(prompt, "You are an expert presentation designer. Create visually engaging, professional slide content with varied layouts.")
@@ -579,14 +583,14 @@ Only output the JSON array, no other text."""
             {"slideNumber": 2, "title": "Key Findings", "bullets": ["Analysis in progress", "See full content below"], "notes": response[:500], "layout": "bullets", "imageKeyword": "analysis", "icon": "chart"}
         ]
     
-    # Determine theme based on content keywords
+    # Determine theme based on content keywords (health checked first for priority)
     content_lower = content.lower()
-    if any(word in content_lower for word in ['tech', 'software', 'code', 'development', 'app', 'digital']):
+    if any(word in content_lower for word in ['health', 'medical', 'patient', 'care', 'hospital', 'clinic', 'healthcare']):
+        theme = 'health'
+    elif any(word in content_lower for word in ['tech', 'software', 'code', 'development', 'app', 'digital']):
         theme = 'tech'
     elif any(word in content_lower for word in ['finance', 'money', 'budget', 'cost', 'revenue', 'profit']):
         theme = 'finance'
-    elif any(word in content_lower for word in ['health', 'medical', 'patient', 'care', 'hospital']):
-        theme = 'health'
     elif any(word in content_lower for word in ['education', 'learn', 'student', 'school', 'training']):
         theme = 'education'
     elif any(word in content_lower for word in ['home', 'house', 'smart', 'automation', 'iot']):
@@ -1047,6 +1051,7 @@ class GenerateImageRequest(BaseModel):
     slide_content: str
     layout: str = "bullets"
     theme: str = "corporate"
+    image_keyword: str = ""
 
 @api_router.post("/generate-image")
 async def generate_single_image(request: GenerateImageRequest):
@@ -1056,7 +1061,8 @@ async def generate_single_image(request: GenerateImageRequest):
             request.slide_title,
             request.slide_content,
             request.layout,
-            request.theme
+            request.theme,
+            request.image_keyword
         )
         if image_base64:
             return {"success": True, "imageBase64": image_base64}
