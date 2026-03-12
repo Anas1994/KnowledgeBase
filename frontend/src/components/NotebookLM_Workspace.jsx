@@ -60,6 +60,8 @@ const IC = {
   expand:    "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7",
   collapse:  "M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3",
   text:      "M4 6h16M4 12h8M4 18h16",
+  sun:       "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42",
+  moon:      "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
 };
 const Ic = ({ n, size = 16, sw = 1.75, fill = "none", stroke = "currentColor", cls = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={cls}>
@@ -99,12 +101,12 @@ const Toast = ({ toasts, dismiss }) => (
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────
 const Confirm = ({ msg, onYes, onNo }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-    <div style={{ background: "var(--bg-modal)", borderRadius: 20, padding: 28, width: 380, boxShadow: "0 24px 80px rgba(0,0,0,0.25)" }}>
+  <div style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+    <div style={{ background: "var(--bg-modal)", borderRadius: 20, padding: 28, width: 380, boxShadow: "var(--shadow-heavy)" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", marginBottom: 20 }}>{msg}</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
         <button onClick={onNo} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--bg-light)", color: "var(--text-secondary)", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{cancelLabel || "Cancel"}</button>
-        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "#EF4444", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{confirmLabel || "Delete"}</button>
+        <button onClick={onYes} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--danger)", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>{confirmLabel || "Delete"}</button>
       </div>
     </div>
   </div>
@@ -1548,14 +1550,14 @@ export default function HealthOS() {
   const TAGS = ["LLMs", "Transformers", "Scaling", "Training", "Benchmarks", "Architecture", "NLP", "Vision"];
 
   // ─── STYLE HELPERS ────────────────────────────────────────────────────
-  const typeColor = t => ({ pdf: "#EF4444", url: "#0ea5e9", doc: "#22C55E", txt: "#F59E0B", ppt: "#C026D3", audio: "#C8A86B", video: "#006C5B" }[t] || "var(--text-secondary)");
+  const typeColor = t => ({ pdf: "var(--danger)", url: "var(--info)", doc: "var(--success)", txt: "var(--warning)", ppt: "var(--purple)", audio: "var(--accent)", video: "var(--primary)" }[t] || "var(--text-secondary)");
   const typeIcon  = t => ({ pdf: "pdf", url: "link", doc: "file", txt: "text", ppt: "slides", audio: "audio", video: "video" }[t] || "file");
   const toolFor   = id => STUDIO_TOOLS.find(t => t.id === id) || STUDIO_TOOLS[0];
 
   // ─── RENDER ───────────────────────────────────────────────────────────
   const BTN = ({ onClick, children, variant = "ghost", style = {}, disabled = false }) => {
     const base = { display: "flex", alignItems: "center", gap: 6, border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12, borderRadius: 8, padding: "6px 12px", transition: "all 0.15s", opacity: disabled ? 0.5 : 1, ...style };
-    const vars = { ghost: { background: "var(--bg-input)", color: "var(--text-secondary)" }, primary: { background: "#006C5B", color: "white" }, danger: { background: "rgba(239,68,68,0.15)", color: "#DC2626" }, outline: { background: "var(--bg-tint)", color: "var(--text-secondary)", border: "1px solid var(--border)" }, subtle: { background: "var(--bg-tint)", color: "var(--text-secondary)", border: "1px solid var(--border)" } };
+    const vars = { ghost: { background: "var(--bg-input)", color: "var(--text-secondary)" }, primary: { background: "var(--primary)", color: "white" }, danger: { background: "var(--danger-bg-light)", color: "var(--danger-dark)" }, outline: { background: "var(--bg-tint)", color: "var(--text-secondary)", border: "1px solid var(--border)" }, subtle: { background: "var(--bg-tint)", color: "var(--text-secondary)", border: "1px solid var(--border)" } };
     return <button onClick={disabled ? undefined : onClick} style={{ ...base, ...vars[variant] }}>{children}</button>;
   };
 
@@ -1582,6 +1584,17 @@ export default function HealthOS() {
           --status-indexed-bg:rgba(0,108,91,0.08);--status-indexed-color:#16A34A;
           --status-pending-bg:rgba(200,168,107,0.1);--status-pending-color:#D97706;
           --brand-suffix:#006C5B;
+          --primary:#006C5B;--accent:#C8A86B;--gradient:linear-gradient(135deg,#006C5B,#C8A86B);--gradient-h:linear-gradient(90deg,#006C5B,#C8A86B);
+          --primary-subtle:rgba(0,108,91,.04);--primary-light:rgba(0,108,91,.06);--primary-soft:rgba(0,108,91,.08);
+          --primary-medium:rgba(0,108,91,.1);--primary-strong:rgba(0,108,91,.15);--primary-bold:rgba(0,108,91,.22);--primary-intense:rgba(0,108,91,.3);
+          --primary-border-subtle:rgba(0,108,91,.15);--primary-border:rgba(0,108,91,.2);--primary-border-medium:rgba(0,108,91,.3);--primary-border-strong:rgba(0,108,91,.4);
+          --primary-icon:rgba(0,108,91,.85);--primary-shadow:0 2px 10px rgba(0,108,91,.15);--primary-glow:0 2px 12px rgba(0,108,91,.15);
+          --primary-shadow-strong:0 4px 14px rgba(0,108,91,.4);
+          --accent-soft:rgba(200,168,107,.1);--accent-medium:rgba(200,168,107,.15);--accent-strong:rgba(200,168,107,.2);--accent-border:rgba(200,168,107,.25);
+          --danger:#EF4444;--danger-dark:#DC2626;--danger-bg:rgba(239,68,68,.2);--danger-bg-light:rgba(239,68,68,.12);--danger-border:rgba(239,68,68,.2);
+          --success:#22C55E;--success-alt:#16A34A;--info:#0ea5e9;--warning:#F59E0B;--purple:#C026D3;
+          --overlay:rgba(0,0,0,.55);--shadow-heavy:0 24px 80px rgba(0,0,0,.22);--shadow-sm:0 2px 8px rgba(0,0,0,.06);
+          --profile-gradient:linear-gradient(135deg,#006C5B,#009B7D);
         }
         [data-theme="dark"]{
           --bg-main:#0A1628;--bg-card:rgba(255,255,255,0.04);--bg-tint:rgba(255,255,255,0.05);--bg-light:rgba(255,255,255,0.03);--bg-input:rgba(255,255,255,0.07);
@@ -1597,6 +1610,17 @@ export default function HealthOS() {
           --status-indexed-bg:rgba(0,108,91,0.2);--status-indexed-color:#22C55E;
           --status-pending-bg:rgba(200,168,107,0.2);--status-pending-color:#C8A86B;
           --brand-suffix:#C8A86B;
+          --primary:#006C5B;--accent:#C8A86B;--gradient:linear-gradient(135deg,#006C5B,#C8A86B);--gradient-h:linear-gradient(90deg,#006C5B,#C8A86B);
+          --primary-subtle:rgba(0,108,91,.08);--primary-light:rgba(0,108,91,.1);--primary-soft:rgba(0,108,91,.12);
+          --primary-medium:rgba(0,108,91,.15);--primary-strong:rgba(0,108,91,.2);--primary-bold:rgba(0,108,91,.35);--primary-intense:rgba(0,108,91,.4);
+          --primary-border-subtle:rgba(0,108,91,.2);--primary-border:rgba(0,108,91,.3);--primary-border-medium:rgba(0,108,91,.4);--primary-border-strong:rgba(0,108,91,.5);
+          --primary-icon:rgba(0,108,91,.9);--primary-shadow:0 2px 10px rgba(0,108,91,.3);--primary-glow:0 2px 12px rgba(0,108,91,.3);
+          --primary-shadow-strong:0 4px 14px rgba(0,108,91,.5);
+          --accent-soft:rgba(200,168,107,.15);--accent-medium:rgba(200,168,107,.2);--accent-strong:rgba(200,168,107,.25);--accent-border:rgba(200,168,107,.3);
+          --danger:#EF4444;--danger-dark:#EF4444;--danger-bg:rgba(239,68,68,.15);--danger-bg-light:rgba(239,68,68,.1);--danger-border:rgba(239,68,68,.25);
+          --success:#22C55E;--success-alt:#22C55E;--info:#0ea5e9;--warning:#F59E0B;--purple:#C026D3;
+          --overlay:rgba(0,0,0,.7);--shadow-heavy:0 24px 80px rgba(0,0,0,.4);--shadow-sm:0 2px 8px rgba(0,0,0,.15);
+          --profile-gradient:linear-gradient(135deg,#006C5B,#009B7D);
         }
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:4px;height:4px}
@@ -1626,7 +1650,7 @@ export default function HealthOS() {
       <nav data-testid="top-nav" style={{ background: "var(--bg-nav)", borderBottom: "1px solid var(--border)", height: 56, padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, position: "relative", zIndex: 20, boxShadow: "var(--nav-shadow)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#006C5B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "0 2px 12px rgba(0,108,91,0.15)" }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "var(--primary-glow)" }}>
               <Ic n="sparkle" size={14} />
             </div>
             <span style={{ color: "var(--text-primary)", fontFamily: "'Cairo',sans-serif", fontWeight: 800, fontSize: 16, letterSpacing: "0.02em" }}>
@@ -1647,10 +1671,10 @@ export default function HealthOS() {
           <button data-testid="theme-toggle-btn" onClick={toggleTheme} style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-light)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", fontSize: 14 }} title={isDark ? "Switch to Light" : "Switch to Dark"}>
             {isDark ? <Ic n="sun" size={14} /> : <Ic n="moon" size={14} />}
           </button>
-          <button data-testid="lang-toggle-btn" onClick={toggleLang} style={{ width: 30, height: 30, borderRadius: 7, background: "rgba(0,108,91,.08)", color: "#006C5B", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,108,91,.15)", fontSize: 11, fontWeight: 800, letterSpacing: 0 }} title={isRTL ? "Switch to English" : "التبديل إلى العربية"}>
+          <button data-testid="lang-toggle-btn" onClick={toggleLang} style={{ width: 30, height: 30, borderRadius: 7, background: "var(--primary-soft)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--primary-border-subtle)", fontSize: 11, fontWeight: 800, letterSpacing: 0 }} title={isRTL ? "Switch to English" : "التبديل إلى العربية"}>
             {t("switchLanguage")}
           </button>
-          <button data-testid="new-btn" onClick={() => setModal("upload")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 7, background: "#006C5B", color: "white", fontSize: 12, fontWeight: 700, boxShadow: "0 2px 10px rgba(0,108,91,0.15)" }}>
+          <button data-testid="new-btn" onClick={() => setModal("upload")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 7, background: "var(--primary)", color: "white", fontSize: 12, fontWeight: 700, boxShadow: "var(--primary-shadow)" }}>
             <Ic n="plus" size={13} /> {t("new")}
           </button>
           <button data-testid="share-btn" onClick={() => setModal("share")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 7, background: "var(--bg-light)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, border: "1px solid var(--border)" }}>
@@ -1659,7 +1683,7 @@ export default function HealthOS() {
           <button data-testid="settings-btn" onClick={() => { setSettingsTab("general"); setModal("settings"); }} style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-light)", color: "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
             <Ic n="settings" size={14} />
           </button>
-          <button data-testid="profile-btn" onClick={() => setModal("profile")} style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
+          <button data-testid="profile-btn" onClick={() => setModal("profile")} style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
             <Ic n="user" size={14} />
           </button>
         </div>
@@ -1674,15 +1698,15 @@ export default function HealthOS() {
             {/* Profile card */}
             <div style={{ background: "var(--bg-tint)", borderRadius: 14, padding: 14, marginBottom: 10, border: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 11 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: "#006C5B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0, boxShadow: "0 2px 10px rgba(0,108,91,0.15)" }}><Ic n="book" size={17} /></div>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0, boxShadow: "var(--primary-shadow)" }}><Ic n="book" size={17} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: "var(--text-primary)", fontWeight: 700, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{notebookTitle}</div>
                   <div style={{ color: "var(--text-muted)", fontSize: 10, marginTop: 2 }}>{t("healthcare")} · {nbVisibility === "private" ? t("private") : t("public")}</div>
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-                {[[t("sourcesLabel"), sources.length, "#22C55E"], [t("indexed"), indexedSources.length, "#006C5B"], [t("outputs"), outputs.length, "#C8A86B"], [t("chunks"), totalChunks, "#0ea5e9"]].map(([l, v, c]) => (
-                  <div key={l} style={{ background: "rgba(0,108,91,.04)", borderRadius: 8, padding: "7px 9px" }}>
+                {[[t("sourcesLabel"), sources.length, "var(--success)"], [t("indexed"), indexedSources.length, "var(--primary)"], [t("outputs"), outputs.length, "var(--accent)"], [t("chunks"), totalChunks, "var(--info)"]].map(([l, v, c]) => (
+                  <div key={l} style={{ background: "var(--primary-subtle)", borderRadius: 8, padding: "7px 9px" }}>
                     <div style={{ color: c, fontWeight: 800, fontSize: 17, lineHeight: 1 }}>{v}</div>
                     <div style={{ color: "var(--text-muted)", fontSize: 10, marginTop: 2 }}>{l}</div>
                   </div>
@@ -1694,9 +1718,9 @@ export default function HealthOS() {
             <div style={{ background: "var(--bg-tint)", borderRadius: 12, padding: 12, marginBottom: 10, border: "1px solid var(--border)" }}>
               <div style={{ color: "var(--text-muted)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: .8, marginBottom: 9 }}>{t("sourceMix")}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Donut segs={[{ p: 60, c: "#006C5B" }, { p: 30, c: "#C8A86B" }, { p: 10, c: "#0ea5e9" }]} size={60} />
+                <Donut segs={[{ p: 60, c: "var(--primary)" }, { p: 30, c: "var(--accent)" }, { p: 10, c: "var(--info)" }]} size={60} />
                 <div style={{ flex: 1 }}>
-                  {[[t("pdfs"), "60%", "#006C5B"], [t("urls"), "30%", "#C8A86B"], [t("other"), "10%", "#0ea5e9"]].map(([l, p, c]) => (
+                  {[[t("pdfs"), "60%", "var(--primary)"], [t("urls"), "30%", "var(--accent)"], [t("other"), "10%", "var(--info)"]].map(([l, p, c]) => (
                     <div key={l} style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
                       <div style={{ width: 7, height: 7, borderRadius: 2, background: c, flexShrink: 0 }} />
                       <span style={{ color: "var(--text-secondary)", fontSize: 10, flex: 1 }}>{l}</span>
@@ -1714,7 +1738,7 @@ export default function HealthOS() {
                 {TAGS.map(t => {
                   const active = activeTags.includes(t);
                   return (
-                    <span key={t} onClick={() => setActiveTags(p => active ? p.filter(x => x !== t) : [...p, t])} style={{ padding: "3px 9px", borderRadius: 20, background: active ? "rgba(0,108,91,.3)" : "rgba(0,108,91,.04)", color: active ? "#C8A86B" : "var(--text-tertiary)", fontSize: 10, cursor: "pointer", border: `1px solid ${active ? "rgba(0,108,91,.4)" : "var(--border)"}`, transition: "all .15s" }}>
+                    <span key={t} onClick={() => setActiveTags(p => active ? p.filter(x => x !== t) : [...p, t])} style={{ padding: "3px 9px", borderRadius: 20, background: active ? "var(--primary-intense)" : "var(--primary-subtle)", color: active ? "var(--accent)" : "var(--text-tertiary)", fontSize: 10, cursor: "pointer", border: `1px solid ${active ? "var(--primary-border-strong)" : "var(--border)"}`, transition: "all .15s" }}>
                       {t}
                     </span>
                   );
@@ -1733,7 +1757,7 @@ export default function HealthOS() {
                 { l: t("exportNotebook"), i: "export", a: exportNotebook },
               ].map(({ l, i, a }) => (
                 <div key={l} className="si" onClick={a} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px" }}>
-                  <div style={{ color: "rgba(0,108,91,.85)", width: 14, display: "flex" }}><Ic n={i} size={14} /></div>
+                  <div style={{ color: "var(--primary-icon)", width: 14, display: "flex" }}><Ic n={i} size={14} /></div>
                   <span style={{ color: "var(--text-strong)", fontSize: 12 }}>{l}</span>
                 </div>
               ))}
@@ -1764,10 +1788,10 @@ export default function HealthOS() {
               {/* KPIs */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
                 {[
-                  { l: t("totalSources"),    v: sources.length,   i: "file",     bg: "#006C5B" },
-                  { l: t("indexedChunks"),   v: totalChunks,      i: "activity", bg: "#0ea5e9" },
-                  { l: t("keyThemes"),       v: 12,               i: "sparkle",  bg: "#C8A86B" },
-                  { l: t("studioOutputs"),   v: outputs.length,   i: "report",   bg: "#22C55E" },
+                  { l: t("totalSources"),    v: sources.length,   i: "file",     bg: "var(--primary)" },
+                  { l: t("indexedChunks"),   v: totalChunks,      i: "activity", bg: "var(--info)" },
+                  { l: t("keyThemes"),       v: 12,               i: "sparkle",  bg: "var(--accent)" },
+                  { l: t("studioOutputs"),   v: outputs.length,   i: "report",   bg: "var(--success)" },
                   { l: t("aiQueries"),       v: messages.filter(m => m.role === "user").length, i: "bot", bg: "var(--text-tertiary)" },
                 ].map(k => (
                   <div key={k.l} className="hr" style={{ background: "var(--bg-card)", borderRadius: 16, padding: 16, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
@@ -1783,7 +1807,7 @@ export default function HealthOS() {
                   <div style={{ background: "var(--bg-card)", borderRadius: 16, padding: 18, marginBottom: 16, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                       <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{t("sourceIntelligence")}</h3>
-                      <button data-testid="view-all-sources-btn" onClick={() => setView("sources")} style={{ color: "#C8A86B", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("viewAll")}</button>
+                      <button data-testid="view-all-sources-btn" onClick={() => setView("sources")} style={{ color: "var(--accent)", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("viewAll")}</button>
                     </div>
                     {sources.slice(0, 4).map(s => (
                       <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid var(--border)" }}>
@@ -1795,7 +1819,7 @@ export default function HealthOS() {
                         <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 10, fontWeight: 700, background: s.status === "indexed" ? "var(--status-indexed-bg)" : "var(--status-pending-bg)", color: s.status === "indexed" ? "var(--status-indexed-color)" : "var(--status-pending-color)" }}>{s.status}</span>
                       </div>
                     ))}
-                    <button data-testid="add-source-overview-btn" onClick={() => { setModal("upload"); }} style={{ marginTop: 12, width: "100%", padding: "8px 0", borderRadius: 9, background: "rgba(0,108,91,0.1)", color: "#006C5B", fontSize: 12, fontWeight: 600, border: "1px dashed rgba(0,108,91,0.3)", cursor: "pointer" }}>
+                    <button data-testid="add-source-overview-btn" onClick={() => { setModal("upload"); }} style={{ marginTop: 12, width: "100%", padding: "8px 0", borderRadius: 9, background: "var(--primary-medium)", color: "var(--primary)", fontSize: 12, fontWeight: 600, border: "1px dashed var(--primary-border-medium)", cursor: "pointer" }}>
                       {t("addSourceBtn")}
                     </button>
                   </div>
@@ -1803,7 +1827,7 @@ export default function HealthOS() {
                   <div style={{ background: "var(--bg-card)", borderRadius: 16, padding: 18, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                       <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{t("studioOutputsTitle")}</h3>
-                      <button data-testid="open-studio-btn" onClick={() => setView("studio")} style={{ color: "#C8A86B", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("openStudio")}</button>
+                      <button data-testid="open-studio-btn" onClick={() => setView("studio")} style={{ color: "var(--accent)", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("openStudio")}</button>
                     </div>
                     {outputs.length === 0 ? <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-tertiary)", fontSize: 12 }}>{t("noOutputsYet")}</div> : (
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
@@ -1841,18 +1865,18 @@ export default function HealthOS() {
                     ))}
                   </div>
                   {/* Quick chat */}
-                  <div style={{ background: "rgba(0,108,91,0.06)", borderRadius: 16, padding: 18, border: "1px solid rgba(0,108,91,.15)" }}>
+                  <div style={{ background: "var(--primary-light)", borderRadius: 16, padding: 18, border: "1px solid var(--primary-border-subtle)" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3 }}>{t("quickChat")}</div>
                     <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 12 }}>{t("askAnything")}</div>
                     <div style={{ display: "flex", gap: 7 }}>
                       <input data-testid="quick-chat-input" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && (setView("chat"), sendMessage())} placeholder={t("askQuestion")} style={{ flex: 1, background: "var(--bg-card)", borderRadius: 9, padding: "8px 12px", color: "var(--text-primary)", fontSize: 12, border: "1px solid var(--border)" }} />
-                      <button data-testid="quick-chat-send-btn" onClick={() => { setView("chat"); sendMessage(); }} style={{ width: 36, height: 36, borderRadius: 9, background: "#006C5B", color: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,108,91,0.15)" }}>
+                      <button data-testid="quick-chat-send-btn" onClick={() => { setView("chat"); sendMessage(); }} style={{ width: 36, height: 36, borderRadius: 9, background: "var(--primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--shadow-sm)" }}>
                         <Ic n="send" size={14} />
                       </button>
                     </div>
                     <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 5 }}>
                       {[t("summarizeSources"), t("keyFindings"), t("compareTopics")].map(q => (
-                        <button key={q} data-testid={`quick-prompt-${q.replace(/\s/g,'-')}`} onClick={() => { setChatInput(q); setView("chat"); sendMessage(q); }} style={{ padding: "4px 9px", borderRadius: 20, background: "rgba(0,108,91,.22)", color: "#C8A86B", fontSize: 10, fontWeight: 600, border: "1px solid rgba(0,108,91,.3)", cursor: "pointer" }}>{q}</button>
+                        <button key={q} data-testid={`quick-prompt-${q.replace(/\s/g,'-')}`} onClick={() => { setChatInput(q); setView("chat"); sendMessage(q); }} style={{ padding: "4px 9px", borderRadius: 20, background: "var(--primary-bold)", color: "var(--accent)", fontSize: 10, fontWeight: 600, border: "1px solid var(--primary-border-medium)", cursor: "pointer" }}>{q}</button>
                       ))}
                     </div>
                   </div>
@@ -1861,7 +1885,7 @@ export default function HealthOS() {
                     <div style={{ background: "var(--bg-card)", borderRadius: 16, padding: 18, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                         <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{t("notesTitle")}</h3>
-                        <button onClick={() => setView("notes")} style={{ color: "#C8A86B", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("viewAll")}</button>
+                        <button onClick={() => setView("notes")} style={{ color: "var(--accent)", fontSize: 11, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("viewAll")}</button>
                       </div>
                       {notes.slice(0, 2).map(n => (
                         <div key={n.id} onClick={() => openNoteEditor(n)} style={{ padding: "8px 10px", borderRadius: 9, background: "var(--bg-tint)", marginBottom: 6, cursor: "pointer", border: "1px solid var(--border)" }}>
@@ -1882,16 +1906,16 @@ export default function HealthOS() {
               {/* Chat header */}
               <div style={{ padding: "10px 20px", background: "var(--bg-nav)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="sparkle" size={14} /></div>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="sparkle" size={14} /></div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{t("healthIntelligenceAssistant")}</div>
-                    <div style={{ fontSize: 10, color: indexedSources.length > 0 ? "#22C55E" : "#F59E0B", fontWeight: 600 }}>
+                    <div style={{ fontSize: 10, color: indexedSources.length > 0 ? "var(--success)" : "var(--warning)", fontWeight: 600 }}>
                       {indexedSources.length > 0 ? `● Grounded in ${indexedSources.length} indexed sources` : "● No indexed sources — add sources first"}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setShowChatSettings(p => !p)} title="Chat Settings" style={{ width: 30, height: 30, borderRadius: 7, background: showChatSettings ? "rgba(0,108,91,0.15)" : "var(--bg-tint)", color: showChatSettings ? "#006C5B" : "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
+                  <button onClick={() => setShowChatSettings(p => !p)} title="Chat Settings" style={{ width: 30, height: 30, borderRadius: 7, background: showChatSettings ? "var(--primary-strong)" : "var(--bg-tint)", color: showChatSettings ? "var(--primary)" : "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
                     <Ic n="settings" size={13} />
                   </button>
                   <button onClick={regenerateLast} title="Regenerate last answer" style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-tint)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
@@ -1900,7 +1924,7 @@ export default function HealthOS() {
                   <button onClick={exportChat} title="Export chat" style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-tint)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
                     <Ic n="download" size={13} />
                   </button>
-                  <button onClick={clearChat} title="Clear chat" style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-tint)", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
+                  <button onClick={clearChat} title="Clear chat" style={{ width: 30, height: 30, borderRadius: 7, background: "var(--bg-tint)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)" }}>
                     <Ic n="trash" size={13} />
                   </button>
                 </div>
@@ -1910,7 +1934,7 @@ export default function HealthOS() {
                 <div style={{ background: "var(--bg-tint)", borderBottom: "1px solid var(--border)", padding: "8px 20px", display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>Reasoning Depth:</span>
                   {["fast", "balanced", "deep"].map(d => (
-                    <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: chatDepth === d ? "#006C5B" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: "1px solid " + (chatDepth === d ? "#006C5B" : "var(--border)"), cursor: "pointer" }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
+                    <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: chatDepth === d ? "var(--primary)" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: "1px solid " + (chatDepth === d ? "var(--primary)" : "var(--border)"), cursor: "pointer" }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
                   ))}
                 </div>
               )}
@@ -1921,32 +1945,32 @@ export default function HealthOS() {
                     <Ic n="book" size={40} stroke="var(--text-tertiary)" />
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>{t("addSourceToStart")}</div>
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{t("uploadPdfs")}</div>
-                    <button onClick={() => setModal("upload")} style={{ marginTop: 4, padding: "9px 20px", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("uploadSource")}</button>
+                    <button onClick={() => setModal("upload")} style={{ marginTop: 4, padding: "9px 20px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("uploadSource")}</button>
                   </div>
                 )}
                 {messages.map(m => (
                   <div key={m.id} className="ani" style={{ marginBottom: 18, display: "flex", gap: 10, flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: m.role === "ai" ? "linear-gradient(135deg,#006C5B,#C8A86B)" : "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: m.role === "ai" ? "white" : "var(--text-secondary)", flexShrink: 0 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: m.role === "ai" ? "var(--gradient)" : "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: m.role === "ai" ? "white" : "var(--text-secondary)", flexShrink: 0 }}>
                       <Ic n={m.role === "ai" ? "sparkle" : "user"} size={13} />
                     </div>
                     <div style={{ maxWidth: "74%" }}>
-                      <div style={{ background: m.role === "user" ? "#006C5B" : "var(--bg-chat-ai)", color: m.role === "user" ? "white" : "var(--text-primary)", borderRadius: m.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", padding: "11px 14px", fontSize: 12, lineHeight: 1.7, boxShadow: "0 2px 8px rgba(0,0,0,.06)", border: m.role === "ai" ? "1px solid var(--border)" : "none", whiteSpace: "pre-wrap" }}>
+                      <div style={{ background: m.role === "user" ? "var(--primary)" : "var(--bg-chat-ai)", color: m.role === "user" ? "white" : "var(--text-primary)", borderRadius: m.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", padding: "11px 14px", fontSize: 12, lineHeight: 1.7, boxShadow: "var(--shadow-sm)", border: m.role === "ai" ? "1px solid var(--border)" : "none", whiteSpace: "pre-wrap" }}>
                         {m.content}
                       </div>
                       {m.citations && m.citations.length > 0 && (
                         <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>
                           {m.citations.map((c, ci) => (
-                            <span key={ci} style={{ padding: "2px 9px", borderRadius: 20, background: "rgba(0,108,91,0.15)", color: "#006C5B", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(0,108,91,0.3)" }} title="View source">📎 {c}</span>
+                            <span key={ci} style={{ padding: "2px 9px", borderRadius: 20, background: "var(--primary-strong)", color: "var(--primary)", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid var(--primary-border-medium)" }} title="View source">📎 {c}</span>
                           ))}
                         </div>
                       )}
-                      {m.pinned && <div style={{ fontSize: 10, color: "#006C5B", marginTop: 4 }}>📌 Pinned</div>}
+                      {m.pinned && <div style={{ fontSize: 10, color: "var(--primary)", marginTop: 4 }}>📌 Pinned</div>}
                       {/* Message actions */}
                       <div style={{ display: "flex", gap: 5, marginTop: 5, opacity: 0.6 }}>
                         <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>{m.time}</span>
                         {m.role === "ai" && (
                           <>
-                            <button onClick={() => pinMessage(m.id)} title={t("pin")} style={{ background: "none", border: "none", cursor: "pointer", color: m.pinned ? "#006C5B" : "var(--text-tertiary)", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="pin" size={10} /> {t("pin")}</button>
+                            <button onClick={() => pinMessage(m.id)} title={t("pin")} style={{ background: "none", border: "none", cursor: "pointer", color: m.pinned ? "var(--primary)" : "var(--text-tertiary)", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="pin" size={10} /> {t("pin")}</button>
                             <button onClick={() => saveToNotes(m)} title="Save to notes" style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="save" size={10} /> Save</button>
                             <button onClick={() => { navigator.clipboard?.writeText(m.content); toast(t("copied")); }} title={t("copy")} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", display: "flex", fontSize: 9, alignItems: "center", gap: 2 }}><Ic n="copy" size={10} /> {t("copy")}</button>
                           </>
@@ -1957,9 +1981,9 @@ export default function HealthOS() {
                 ))}
                 {generating && (
                   <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0 }}><Ic n="sparkle" size={13} /></div>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0 }}><Ic n="sparkle" size={13} /></div>
                     <div style={{ background: "var(--bg-card)", borderRadius: "4px 16px 16px 16px", padding: "13px 16px", border: "1px solid var(--border)", display: "flex", gap: 5, alignItems: "center" }}>
-                      {[0, 1, 2].map(d => <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "#006C5B" }} className={`dot${d + 1}`} />)}
+                      {[0, 1, 2].map(d => <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--primary)" }} className={`dot${d + 1}`} />)}
                     </div>
                   </div>
                 )}
@@ -1972,7 +1996,7 @@ export default function HealthOS() {
                   <textarea value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={indexedSources.length > 0 ? "Ask anything about your sources… (Enter to send)" : "Upload and index a source first…"} rows={1} style={{ flex: 1, fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5, maxHeight: 100, overflowY: "auto", paddingTop: 1 }} />
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <button title="Voice input" style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="mic" size={15} /></button>
-                    <button onClick={() => sendMessage()} disabled={!chatInput.trim() || !indexedSources.length} style={{ width: 32, height: 32, borderRadius: 8, background: chatInput.trim() && indexedSources.length ? "linear-gradient(135deg,#006C5B,#C8A86B)" : "var(--border)", color: chatInput.trim() && indexedSources.length ? "white" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s", border: "none", cursor: chatInput.trim() && indexedSources.length ? "pointer" : "not-allowed" }}>
+                    <button onClick={() => sendMessage()} disabled={!chatInput.trim() || !indexedSources.length} style={{ width: 32, height: 32, borderRadius: 8, background: chatInput.trim() && indexedSources.length ? "var(--gradient)" : "var(--border)", color: chatInput.trim() && indexedSources.length ? "white" : "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s", border: "none", cursor: chatInput.trim() && indexedSources.length ? "pointer" : "not-allowed" }}>
                       <Ic n="send" size={13} />
                     </button>
                   </div>
@@ -1990,24 +2014,24 @@ export default function HealthOS() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: 9, border: "1px solid var(--border)", overflow: "hidden" }}>
                     {["all", "pdf", "url", "indexed", "processing"].map(f => (
-                      <button key={f} onClick={() => setSrcFilter(f)} style={{ padding: "6px 12px", fontSize: 11, fontWeight: 600, background: srcFilter === f ? "#006C5B" : "transparent", color: srcFilter === f ? "white" : "var(--text-secondary)", border: "none", cursor: "pointer" }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                      <button key={f} onClick={() => setSrcFilter(f)} style={{ padding: "6px 12px", fontSize: 11, fontWeight: 600, background: srcFilter === f ? "var(--primary)" : "transparent", color: srcFilter === f ? "white" : "var(--text-secondary)", border: "none", cursor: "pointer" }}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
                     ))}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--bg-card)", borderRadius: 9, padding: "6px 12px", border: "1px solid var(--border)" }}>
                     <Ic n="search" size={13} stroke="var(--text-tertiary)" />
                     <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder={t("searchSources")} style={{ fontSize: 12, color: "var(--text-primary)", width: 180 }} />
                   </div>
-                  <button onClick={() => setModal("upload")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
+                  <button onClick={() => setModal("upload")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 9, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
                     <Ic n="plus" size={13} /> Add Source
                   </button>
                 </div>
               </div>
               {/* Drag zone */}
               <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={e => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files); }}
-                style={{ borderRadius: 14, border: `2px dashed ${dragOver ? "#006C5B" : "rgba(0,108,91,0.3)"}`, background: dragOver ? "rgba(0,108,91,0.15)" : "transparent", padding: "14px 20px", marginBottom: 16, textAlign: "center", transition: "all .2s", cursor: "pointer" }}
+                style={{ borderRadius: 14, border: `2px dashed ${dragOver ? "var(--primary)" : "var(--primary-border-medium)"}`, background: dragOver ? "var(--primary-strong)" : "transparent", padding: "14px 20px", marginBottom: 16, textAlign: "center", transition: "all .2s", cursor: "pointer" }}
                 onClick={() => fileInputRef.current?.click()}>
-                <Ic n="upload" size={20} stroke={dragOver ? "#006C5B" : "var(--text-tertiary)"} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: dragOver ? "#006C5B" : "var(--text-tertiary)", marginTop: 6 }}>{t("dropFilesHere")}</div>
+                <Ic n="upload" size={20} stroke={dragOver ? "var(--primary)" : "var(--text-tertiary)"} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: dragOver ? "var(--primary)" : "var(--text-tertiary)", marginTop: 6 }}>{t("dropFilesHere")}</div>
                 <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 3 }}>{t("supportedFormats")}</div>
                 <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.mp3,.mp4,.wav" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
               </div>
@@ -2020,19 +2044,19 @@ export default function HealthOS() {
                         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.4, marginBottom: 5 }}>{s.title}</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 5 }}>
                           <span style={{ padding: "1px 7px", borderRadius: 20, background: typeColor(s.type) + "18", color: typeColor(s.type), fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>{s.type}</span>
-                          <span style={{ padding: "1px 7px", borderRadius: 20, background: s.status === "indexed" ? "rgba(200,168,107,0.15)" : "rgba(200,168,107,0.2)", color: s.status === "indexed" ? "#16A34A" : "#D97706", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>{s.status}</span>
+                          <span style={{ padding: "1px 7px", borderRadius: 20, background: s.status === "indexed" ? "var(--accent-medium)" : "var(--accent-strong)", color: s.status === "indexed" ? "var(--success-alt)" : "var(--status-pending-color)", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>{s.status}</span>
                         </div>
                         <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{s.date} · {s.size} {s.chunks > 0 ? `· ${s.chunks} chunks` : ""}</div>
-                        {s.url && <div style={{ fontSize: 9, color: "#0ea5e9", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🔗 {s.url}</div>}
+                        {s.url && <div style={{ fontSize: 9, color: "var(--info)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🔗 {s.url}</div>}
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <button onClick={() => { setModalData(s); setModal("source"); }} title="View details" style={{ width: 26, height: 26, borderRadius: 6, background: "var(--bg-tint)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", cursor: "pointer" }}><Ic n="eye" size={11} /></button>
-                        <button onClick={() => deleteSource(s.id)} title="Delete" style={{ width: 26, height: 26, borderRadius: 6, background: "rgba(239,68,68,0.2)", color: "#EF4444", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(239,68,68,0.2)", cursor: "pointer" }}><Ic n="trash" size={11} /></button>
+                        <button onClick={() => deleteSource(s.id)} title="Delete" style={{ width: 26, height: 26, borderRadius: 6, background: "var(--danger-bg)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--danger-border)", cursor: "pointer" }}><Ic n="trash" size={11} /></button>
                       </div>
                     </div>
                     {s.status === "processing" && (
                       <div style={{ marginTop: 10, background: "var(--bg-light)", borderRadius: 6, overflow: "hidden", height: 3 }}>
-                        <div style={{ width: "65%", height: "100%", background: "linear-gradient(90deg,#006C5B,#C8A86B)", borderRadius: 6 }} className="pulse" />
+                        <div style={{ width: "65%", height: "100%", background: "var(--gradient-h)", borderRadius: 6 }} className="pulse" />
                       </div>
                     )}
                   </div>
@@ -2041,7 +2065,7 @@ export default function HealthOS() {
                   <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)" }}>
                     <Ic n="search" size={32} stroke="var(--text-tertiary)" />
                     <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>{t("noSourcesMatch")}</div>
-                    <button onClick={() => { setSearchQ(""); setSrcFilter("all"); setActiveTags([]); }} style={{ marginTop: 8, padding: "7px 16px", borderRadius: 8, background: "#006C5B", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("clearFilters")}</button>
+                    <button onClick={() => { setSearchQ(""); setSrcFilter("all"); setActiveTags([]); }} style={{ marginTop: 8, padding: "7px 16px", borderRadius: 8, background: "var(--primary)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("clearFilters")}</button>
                   </div>
                 )}
               </div>
@@ -2056,10 +2080,10 @@ export default function HealthOS() {
                 <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{t("generateAiOutputs")} {indexedSources.length} {indexedSources.length !== 1 ? t("indexedSourcePlural") : t("indexedSourceSingle")}</p>
               </div>
               {indexedSources.length === 0 && (
-                <div style={{ background: "rgba(200,168,107,0.1)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10, border: "1px solid rgba(200,168,107,0.25)" }}>
-                  <Ic n="alert" size={16} stroke="#C8A86B" />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#C8A86B" }}>{t("indexAtLeast")}</span>
-                  <button onClick={() => setModal("upload")} style={{ marginLeft: "auto", padding: "5px 12px", borderRadius: 7, background: "#C8A86B", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>Add Source</button>
+                <div style={{ background: "var(--accent-soft)", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--accent-border)" }}>
+                  <Ic n="alert" size={16} stroke="var(--accent)" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>{t("indexAtLeast")}</span>
+                  <button onClick={() => setModal("upload")} style={{ marginLeft: "auto", padding: "5px 12px", borderRadius: 7, background: "var(--accent)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>Add Source</button>
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 22 }}>
@@ -2110,7 +2134,7 @@ export default function HealthOS() {
                             <button onClick={() => downloadOutput(o)} style={{ flex: 1, padding: "5px 0", borderRadius: 7, background: "var(--border)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
                               <Ic n="download" size={10} /> {t("export")}
                             </button>
-                            <button onClick={() => deleteOutput(o.id)} style={{ width: 28, padding: "5px 0", borderRadius: 7, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 10, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <button onClick={() => deleteOutput(o.id)} style={{ width: 28, padding: "5px 0", borderRadius: 7, background: "var(--danger-bg)", color: "var(--danger)", fontSize: 10, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <Ic n="trash" size={10} />
                             </button>
                           </div>
@@ -2128,7 +2152,7 @@ export default function HealthOS() {
             <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>{t("notesTitle")} <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>({notes.length})</span></h2>
-                <button onClick={() => openNoteEditor()} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
+                <button onClick={() => openNoteEditor()} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 9, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>
                   <Ic n="plus" size={13} /> New Note
                 </button>
               </div>
@@ -2137,7 +2161,7 @@ export default function HealthOS() {
                   <Ic n="note" size={40} stroke="var(--text-tertiary)" />
                   <div style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>{t("noNotesYet")}</div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>{t("createFirstNote")}</div>
-                  <button onClick={() => openNoteEditor()} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("createNote")}</button>
+                  <button onClick={() => openNoteEditor()} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("createNote")}</button>
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 12 }}>
@@ -2145,14 +2169,14 @@ export default function HealthOS() {
                     <div key={n.id} className="hr" style={{ background: "var(--bg-card)", borderRadius: 14, padding: 16, border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,.04)", cursor: "pointer" }} onClick={() => openNoteEditor(n)}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", flex: 1, marginRight: 8 }}>{n.title}</div>
-                        <button onClick={e => { e.stopPropagation(); setNotes(p => p.map(x => x.id === n.id ? { ...x, pinned: !x.pinned } : x)); }} style={{ color: n.pinned ? "#F59E0B" : "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="pin" size={13} /></button>
+                        <button onClick={e => { e.stopPropagation(); setNotes(p => p.map(x => x.id === n.id ? { ...x, pinned: !x.pinned } : x)); }} style={{ color: n.pinned ? "var(--warning)" : "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="pin" size={13} /></button>
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 10 }}>{n.content.substring(0, 120)}{n.content.length > 120 ? "…" : ""}</div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{n.created}</span>
                         <div style={{ display: "flex", gap: 5 }}>
-                          <button onClick={e => { e.stopPropagation(); openNoteEditor(n); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(0,108,91,0.15)", color: "#006C5B", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("edit")}</button>
-                          <button onClick={e => { e.stopPropagation(); deleteNote(n.id); }} style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("delete")}</button>
+                          <button onClick={e => { e.stopPropagation(); openNoteEditor(n); }} style={{ padding: "3px 8px", borderRadius: 6, background: "var(--primary-strong)", color: "var(--primary)", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("edit")}</button>
+                          <button onClick={e => { e.stopPropagation(); deleteNote(n.id); }} style={{ padding: "3px 8px", borderRadius: 6, background: "var(--danger-bg)", color: "var(--danger)", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("delete")}</button>
                         </div>
                       </div>
                     </div>
@@ -2168,7 +2192,7 @@ export default function HealthOS() {
           <aside data-testid="right-studio-rail" style={{ width: 290, background: "var(--bg-rail)", borderLeft: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0, overflow: "hidden" }}>
             <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <div style={{ width: 22, height: 22, borderRadius: 5, background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="sparkle" size={11} /></div>
+                <div style={{ width: 22, height: 22, borderRadius: 5, background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="sparkle" size={11} /></div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{t("studio")}</span>
               </div>
               <button onClick={() => setStudioOpen(false)} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={14} /></button>
@@ -2190,11 +2214,11 @@ export default function HealthOS() {
               <div style={{ background: "var(--bg-tint)", borderRadius: 12, padding: 12, border: "1px solid var(--border)", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)" }}>{t("quickNote")}</span>
-                  <button onClick={() => openNoteEditor()} style={{ color: "#006C5B", fontSize: 10, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("fullEditor")}</button>
+                  <button onClick={() => openNoteEditor()} style={{ color: "var(--primary)", fontSize: 10, fontWeight: 700, background: "none", border: "none", cursor: "pointer" }}>{t("fullEditor")}</button>
                 </div>
                 <input value={noteTitle} onChange={e => setNoteTitle(e.target.value)} placeholder={t("title")} style={{ width: "100%", fontSize: 11, fontWeight: 600, color: "var(--text-primary)", background: "var(--bg-card)", borderRadius: 6, padding: "5px 8px", border: "1px solid var(--border)", marginBottom: 5 }} />
                 <textarea value={noteBody} onChange={e => setNoteBody(e.target.value)} placeholder={t("writeANote")} rows={3} style={{ width: "100%", fontSize: 11, color: "var(--text-primary)", background: "var(--bg-card)", borderRadius: 6, padding: "5px 8px", border: "1px solid var(--border)", lineHeight: 1.5 }} />
-                <button onClick={saveNote} style={{ width: "100%", marginTop: 7, padding: "6px 0", borderRadius: 7, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
+                <button onClick={saveNote} style={{ width: "100%", marginTop: 7, padding: "6px 0", borderRadius: 7, background: "var(--gradient)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
               </div>
               {/* Recent outputs in rail */}
               <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: .8, marginBottom: 8 }}>{t("recentOutputs")}</div>
@@ -2216,7 +2240,7 @@ export default function HealthOS() {
           </aside>
         )}
         {(view === "overview" || view === "chat") && !studioOpen && (
-          <button onClick={() => setStudioOpen(true)} style={{ position: "absolute", right: 14, top: 14, width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 14px rgba(0,108,91,.4)", zIndex: 10, border: "none", cursor: "pointer" }} title="Open Studio">
+          <button onClick={() => setStudioOpen(true)} style={{ position: "absolute", right: 14, top: 14, width: 34, height: 34, borderRadius: 9, background: "var(--gradient)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--primary-shadow-strong)", zIndex: 10, border: "none", cursor: "pointer" }} title="Open Studio">
             <Ic n="sparkle" size={14} />
           </button>
         )}
@@ -2226,11 +2250,11 @@ export default function HealthOS() {
           MODALS
       ══════════════════════════════════════════════ */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(5px)", animation: "fadeIn .18s ease" }}>
+        <div style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(5px)", animation: "fadeIn .18s ease" }}>
 
           {/* ── UPLOAD ── */}
           {modal === "upload" && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 540, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 540, boxShadow: "var(--shadow-heavy)", overflow: "hidden" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{t("addSourceTitle")}</h3>
                 <button onClick={() => { setModal(null); setWebResults([]); setWebSearchInput(""); setUrlInput(""); }} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
@@ -2238,7 +2262,7 @@ export default function HealthOS() {
               {/* Tabs */}
               <div style={{ display: "flex", padding: "10px 24px 0", gap: 2, borderBottom: "1px solid var(--border)" }}>
                 {[["file",t("uploadFile")],["url",t("addUrl")],["web",t("webSearchTab")],["drive",t("googleDrive")]].map(([tt, l]) => (
-                  <button key={tt} onClick={() => setUploadTab(tt)} style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600, color: uploadTab === tt ? "#006C5B" : "var(--text-tertiary)", background: "none", border: "none", borderBottom: `2px solid ${uploadTab === tt ? "#006C5B" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
+                  <button key={tt} onClick={() => setUploadTab(tt)} style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600, color: uploadTab === tt ? "var(--primary)" : "var(--text-tertiary)", background: "none", border: "none", borderBottom: `2px solid ${uploadTab === tt ? "var(--primary)" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
                 ))}
               </div>
               <div style={{ padding: 24 }}>
@@ -2248,14 +2272,14 @@ export default function HealthOS() {
                     <div onDragOver={e => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
                       onDrop={e => { e.preventDefault(); setDragOver(false); handleFileUpload(e.dataTransfer.files); }}
                       onClick={() => fileInputRef.current?.click()}
-                      style={{ border: `2px dashed ${dragOver ? "#006C5B" : "rgba(0,108,91,0.3)"}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", background: dragOver ? "rgba(0,108,91,0.15)" : "var(--bg-tint)", cursor: "pointer", transition: "all .2s" }}>
-                      <Ic n="upload" size={32} stroke={dragOver ? "#006C5B" : "var(--text-tertiary)"} />
-                      <div style={{ fontSize: 14, fontWeight: 700, color: dragOver ? "#006C5B" : "var(--text-secondary)", marginTop: 10 }}>{t("dropFilesHere")}</div>
+                      style={{ border: `2px dashed ${dragOver ? "var(--primary)" : "var(--primary-border-medium)"}`, borderRadius: 14, padding: "32px 20px", textAlign: "center", background: dragOver ? "var(--primary-strong)" : "var(--bg-tint)", cursor: "pointer", transition: "all .2s" }}>
+                      <Ic n="upload" size={32} stroke={dragOver ? "var(--primary)" : "var(--text-tertiary)"} />
+                      <div style={{ fontSize: 14, fontWeight: 700, color: dragOver ? "var(--primary)" : "var(--text-secondary)", marginTop: 10 }}>{t("dropFilesHere")}</div>
                       <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 5 }}>{t("supportedFormatsLong")}</div>
                       <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.mp3,.mp4,.wav" style={{ display: "none" }} onChange={e => handleFileUpload(e.target.files)} />
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 14 }}>
-                      {[["PDF/Doc","pdf","#EF4444"],["Presentation","slides","#C026D3"],["Audio","audio","#C8A86B"],["Video","video","#006C5B"]].map(([l, i, c]) => (
+                      {[["PDF/Doc","pdf","var(--danger)"],["Presentation","slides","var(--purple)"],["Audio","audio","var(--accent)"],["Video","video","var(--primary)"]].map(([l, i, c]) => (
                         <div key={l} onClick={() => fileInputRef.current?.click()} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 10, background: c + "10", cursor: "pointer", border: `1px solid ${c}25` }}>
                           <Ic n={i} size={20} stroke={c} />
                           <div style={{ fontSize: 9, fontWeight: 700, color: c, marginTop: 5 }}>{l}</div>
@@ -2270,12 +2294,12 @@ export default function HealthOS() {
                     <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>Enter a URL to scrape and index</label>
                     <div style={{ display: "flex", gap: 8 }}>
                       <input value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleURLAdd()} placeholder="https://example.com/article" style={{ flex: 1, background: "var(--bg-tint)", borderRadius: 10, padding: "10px 14px", color: "var(--text-primary)", fontSize: 13, border: "1px solid var(--border)" }} />
-                      <button onClick={handleURLAdd} style={{ padding: "0 18px", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Add</button>
+                      <button onClick={handleURLAdd} style={{ padding: "0 18px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Add</button>
                     </div>
                     <div style={{ marginTop: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", marginBottom: 8 }}>Examples</div>
                       {["https://arxiv.org/abs/1706.03762", "https://openai.com/research", "https://en.wikipedia.org/wiki/Large_language_model"].map(u => (
-                        <div key={u} onClick={() => setUrlInput(u)} style={{ padding: "7px 10px", borderRadius: 8, background: "var(--bg-tint)", border: "1px solid var(--border)", fontSize: 11, color: "#0ea5e9", cursor: "pointer", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u}</div>
+                        <div key={u} onClick={() => setUrlInput(u)} style={{ padding: "7px 10px", borderRadius: 8, background: "var(--bg-tint)", border: "1px solid var(--border)", fontSize: 11, color: "var(--info)", cursor: "pointer", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u}</div>
                       ))}
                     </div>
                   </div>
@@ -2285,7 +2309,7 @@ export default function HealthOS() {
                   <div>
                     <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                       <input value={webSearchInput} onChange={e => setWebSearchInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleWebSearch()} placeholder="Search the web for sources…" style={{ flex: 1, background: "var(--bg-tint)", borderRadius: 10, padding: "10px 14px", color: "var(--text-primary)", fontSize: 13, border: "1px solid var(--border)" }} />
-                      <button onClick={handleWebSearch} style={{ padding: "0 16px", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={handleWebSearch} style={{ padding: "0 16px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
                         {webSearching ? <div className="spin" style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,.4)", borderTop: "2px solid white", borderRadius: "50%" }} /> : <Ic n="search" size={13} />} Search
                       </button>
                     </div>
@@ -2296,10 +2320,10 @@ export default function HealthOS() {
                             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>{r.title}</div>
-                                <div style={{ fontSize: 10, color: "#0ea5e9", marginBottom: 4 }}>{r.url}</div>
+                                <div style={{ fontSize: 10, color: "var(--info)", marginBottom: 4 }}>{r.url}</div>
                                 <div style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.5 }}>{r.snippet}</div>
                               </div>
-                              <button onClick={() => { addWebResult(r); setModal(null); setWebResults([]); }} style={{ padding: "5px 12px", borderRadius: 7, background: "#006C5B", color: "white", fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", flexShrink: 0 }}>Add</button>
+                              <button onClick={() => { addWebResult(r); setModal(null); setWebResults([]); }} style={{ padding: "5px 12px", borderRadius: 7, background: "var(--primary)", color: "white", fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", flexShrink: 0 }}>Add</button>
                             </div>
                           </div>
                         ))}
@@ -2327,7 +2351,7 @@ export default function HealthOS() {
 
           {/* ── SHARE ── */}
           {modal === "share" && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 480, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 480, boxShadow: "var(--shadow-heavy)", overflow: "hidden" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{t("shareNotebook")}</h3>
                 <button onClick={() => setModal(null)} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
@@ -2337,7 +2361,7 @@ export default function HealthOS() {
                 <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", display: "block", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>Invite collaborators</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   <input value={shareEmail} onChange={e => setShareEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && inviteCollaborator()} placeholder="colleague@email.com" style={{ flex: 1, background: "var(--bg-tint)", borderRadius: 10, padding: "9px 13px", color: "var(--text-primary)", fontSize: 12, border: "1px solid var(--border)" }} />
-                  <button onClick={inviteCollaborator} style={{ padding: "0 16px", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Invite</button>
+                  <button onClick={inviteCollaborator} style={{ padding: "0 16px", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Invite</button>
                 </div>
                 {/* Collaborators */}
                 {collaborators.length > 0 && (
@@ -2345,7 +2369,7 @@ export default function HealthOS() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: .7, marginBottom: 8 }}>{t("currentCollaborators")}</div>
                     {collaborators.map((c, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 9, background: "var(--bg-tint)", marginBottom: 5, border: "1px solid var(--border)" }}>
-                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{c.avatar}</div>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{c.avatar}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{c.email}</div>
                         </div>
@@ -2354,7 +2378,7 @@ export default function HealthOS() {
                           <option>Editor</option>
                           <option>Admin</option>
                         </select>
-                        <button onClick={() => setCollaborators(p => p.filter((_, j) => j !== i))} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={12} /></button>
+                        <button onClick={() => setCollaborators(p => p.filter((_, j) => j !== i))} style={{ color: "var(--danger)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={12} /></button>
                       </div>
                     ))}
                   </div>
@@ -2364,7 +2388,7 @@ export default function HealthOS() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, textTransform: "uppercase", letterSpacing: .7 }}>{t("shareLink")}</div>
                   <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <div style={{ flex: 1, background: "var(--bg-card)", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "var(--text-tertiary)", border: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shareLink}</div>
-                    <button onClick={copyLink} style={{ padding: "0 14px", borderRadius: 8, background: linkCopied ? "#22C55E" : "#006C5B", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", transition: "background .3s", display: "flex", alignItems: "center", gap: 5 }}>
+                    <button onClick={copyLink} style={{ padding: "0 14px", borderRadius: 8, background: linkCopied ? "var(--success)" : "var(--primary)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", transition: "background .3s", display: "flex", alignItems: "center", gap: 5 }}>
                       <Ic n={linkCopied ? "check" : "copy"} size={12} /> {linkCopied ? t("copied") : t("copyLink")}
                     </button>
                   </div>
@@ -2382,7 +2406,7 @@ export default function HealthOS() {
 
           {/* ── NOTE EDITOR ── */}
           {modal === "note" && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 600, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 600, boxShadow: "var(--shadow-heavy)", overflow: "hidden" }}>
               <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{editNoteId ? t("editNote") : t("newNote")}</h3>
                 <button onClick={() => { setModal(null); setNoteTitle(""); setNoteBody(""); setEditNoteId(null); }} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
@@ -2394,7 +2418,7 @@ export default function HealthOS() {
                   <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{noteBody.length} {t("characters")} · {noteBody.split(/\s+/).filter(Boolean).length} {t("words")}</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => { setModal(null); setNoteTitle(""); setNoteBody(""); setEditNoteId(null); }} style={{ padding: "8px 18px", borderRadius: 9, background: "var(--bg-light)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>{t("cancel")}</button>
-                    <button onClick={saveNote} style={{ padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
+                    <button onClick={saveNote} style={{ padding: "8px 20px", borderRadius: 9, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveNote")}</button>
                   </div>
                 </div>
               </div>
@@ -2403,7 +2427,7 @@ export default function HealthOS() {
 
           {/* ── SETTINGS ── */}
           {modal === "settings" && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 580, maxHeight: "80vh", boxShadow: "0 24px 80px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 580, maxHeight: "80vh", boxShadow: "var(--shadow-heavy)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>{t("notebookSettings")}</h3>
                 <button onClick={() => setModal(null)} style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="x" size={16} /></button>
@@ -2411,7 +2435,7 @@ export default function HealthOS() {
               {/* Settings tabs */}
               <div style={{ display: "flex", padding: "8px 22px 0", borderBottom: "1px solid var(--border)", gap: 0 }}>
                 {[["general",t("general")],["sources",t("sources")],["ai",t("aiModel")],["export",t("export")]].map(([tab, l]) => (
-                  <button key={tab} onClick={() => setSettingsTab(tab)} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, color: settingsTab === tab ? "#006C5B" : "var(--text-tertiary)", background: "none", border: "none", borderBottom: `2px solid ${settingsTab === tab ? "#006C5B" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
+                  <button key={tab} onClick={() => setSettingsTab(tab)} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, color: settingsTab === tab ? "var(--primary)" : "var(--text-tertiary)", background: "none", border: "none", borderBottom: `2px solid ${settingsTab === tab ? "var(--primary)" : "transparent"}`, cursor: "pointer", transition: "all .15s" }}>{l}</button>
                 ))}
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 22 }}>
@@ -2433,7 +2457,7 @@ export default function HealthOS() {
                         <option value="public">🌐 Public</option>
                       </select>
                     </div>
-                    <button onClick={() => { toast(t("settingsSaved")); setModal(null); }} style={{ padding: "10px 0", borderRadius: 10, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveChanges")}</button>
+                    <button onClick={() => { toast(t("settingsSaved")); setModal(null); }} style={{ padding: "10px 0", borderRadius: 10, background: "var(--gradient)", color: "white", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("saveChanges")}</button>
                   </div>
                 )}
                 {settingsTab === "sources" && (
@@ -2446,7 +2470,7 @@ export default function HealthOS() {
                           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</div>
                           <div style={{ fontSize: 9, color: "var(--text-tertiary)" }}>{s.chunks} chunks · {s.status}</div>
                         </div>
-                        <button onClick={() => deleteSource(s.id)} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="trash" size={13} /></button>
+                        <button onClick={() => deleteSource(s.id)} style={{ color: "var(--danger)", background: "none", border: "none", cursor: "pointer", display: "flex" }}><Ic n="trash" size={13} /></button>
                       </div>
                     ))}
                   </div>
@@ -2459,11 +2483,11 @@ export default function HealthOS() {
                         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{v}</span>
                       </div>
                     ))}
-                    <div style={{ padding: 12, borderRadius: 10, background: "rgba(0,108,91,0.15)", border: "1px solid rgba(0,108,91,0.3)" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#006C5B", marginBottom: 4 }}>{t("reasoningDepth")}</div>
+                    <div style={{ padding: 12, borderRadius: 10, background: "var(--primary-strong)", border: "1px solid var(--primary-border-medium)" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--primary)", marginBottom: 4 }}>{t("reasoningDepth")}</div>
                       <div style={{ display: "flex", gap: 7 }}>
                         {["fast", "balanced", "deep"].map(d => (
-                          <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 11, fontWeight: 700, background: chatDepth === d ? "#006C5B" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: `1px solid ${chatDepth === d ? "#006C5B" : "var(--border)"}`, cursor: "pointer" }}>{d}</button>
+                          <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 11, fontWeight: 700, background: chatDepth === d ? "var(--primary)" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: `1px solid ${chatDepth === d ? "var(--primary)" : "var(--border)"}`, cursor: "pointer" }}>{d}</button>
                         ))}
                       </div>
                     </div>
@@ -2479,9 +2503,9 @@ export default function HealthOS() {
                       { l: t("exportAllOutputs"), d: t("zipContent"), i: "download", a: () => toast("Preparing ZIP...", "warn") },
                     ].map(({ l, d, i, a }) => (
                       <div key={l} onClick={a} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 11, background: "var(--bg-tint)", border: "1px solid var(--border)", cursor: "pointer", transition: "all .15s" }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor = "#006C5B"}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = "var(--primary)"}
                         onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: "#006C5B20", display: "flex", alignItems: "center", justifyContent: "center", color: "#006C5B" }}><Ic n={i} size={15} /></div>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--primary-medium)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}><Ic n={i} size={15} /></div>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{l}</div>
                           <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{d}</div>
@@ -2489,9 +2513,9 @@ export default function HealthOS() {
                         <Ic n="chevR" size={14} stroke="var(--text-tertiary)" />
                       </div>
                     ))}
-                    <div style={{ marginTop: 8, padding: 14, borderRadius: 11, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#DC2626", marginBottom: 6 }}>{t("dangerZone")}</div>
-                      <button onClick={() => setConfirm({ msg: "Delete this entire notebook? All sources, outputs, and notes will be permanently deleted.", onYes: () => { toast("Notebook deleted", "error"); setConfirm(null); setModal(null); }, onNo: () => setConfirm(null) })} style={{ padding: "7px 16px", borderRadius: 8, background: "#EF4444", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("deleteNotebook")}</button>
+                    <div style={{ marginTop: 8, padding: 14, borderRadius: 11, background: "var(--danger-bg-light)", border: "1px solid var(--danger-border)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--danger-dark)", marginBottom: 6 }}>{t("dangerZone")}</div>
+                      <button onClick={() => setConfirm({ msg: "Delete this entire notebook? All sources, outputs, and notes will be permanently deleted.", onYes: () => { toast("Notebook deleted", "error"); setConfirm(null); setModal(null); }, onNo: () => setConfirm(null) })} style={{ padding: "7px 16px", borderRadius: 8, background: "var(--danger)", color: "white", fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("deleteNotebook")}</button>
                     </div>
                   </div>
                 )}
@@ -2503,7 +2527,7 @@ export default function HealthOS() {
           {modal === "output" && modalData && (() => {
             const tool = toolFor(modalData.type);
             return (
-              <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 640, maxHeight: "82vh", boxShadow: "0 24px 80px rgba(0,0,0,.22)", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", zIndex: 101 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 640, maxHeight: "82vh", boxShadow: "var(--shadow-heavy)", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative", zIndex: 101 }}>
                 <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: tool.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: tool.color }}><Ic n={tool.icon} size={15} /></div>
                   <div style={{ flex: 1 }}>
@@ -2523,7 +2547,7 @@ export default function HealthOS() {
 
           {/* ── SOURCE DETAIL ── */}
           {modal === "source" && modalData && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 520, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 520, boxShadow: "var(--shadow-heavy)", overflow: "hidden" }}>
               <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 9, background: typeColor(modalData.type) + "18", display: "flex", alignItems: "center", justifyContent: "center", color: typeColor(modalData.type), flexShrink: 0 }}><Ic n={typeIcon(modalData.type)} size={18} /></div>
                 <div style={{ flex: 1 }}>
@@ -2539,14 +2563,14 @@ export default function HealthOS() {
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{v}</span>
                   </div>
                 ))}
-                {modalData.url && <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 9, background: "rgba(0,108,91,0.1)", border: "1px solid rgba(0,108,91,0.2)" }}><div style={{ fontSize: 10, fontWeight: 700, color: "#006C5B", marginBottom: 3 }}>Source URL</div><div style={{ fontSize: 11, color: "#0ea5e9" }}>{modalData.url}</div></div>}
+                {modalData.url && <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 9, background: "var(--primary-medium)", border: "1px solid var(--primary-border)" }}><div style={{ fontSize: 10, fontWeight: 700, color: "var(--primary)", marginBottom: 3 }}>Source URL</div><div style={{ fontSize: 11, color: "var(--info)" }}>{modalData.url}</div></div>}
                 <div style={{ marginTop: 12 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", marginBottom: 7, textTransform: "uppercase", letterSpacing: .7 }}>Content Preview</div>
                   <div style={{ background: "var(--bg-tint)", borderRadius: 10, padding: 12, border: "1px solid var(--border)", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.7 }}>{modalData.content?.substring(0, 300)}{modalData.content?.length > 300 ? "…" : ""}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  <button onClick={() => { setChatInput(`Summarize: ${modalData.title}`); setView("chat"); setModal(null); sendMessage(`Summarize: ${modalData.title}`); }} style={{ flex: 1, padding: "9px 0", borderRadius: 9, background: "linear-gradient(135deg,#006C5B,#C8A86B)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Ask AI About This</button>
-                  <button onClick={() => deleteSource(modalData.id)} style={{ padding: "9px 14px", borderRadius: 9, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Delete</button>
+                  <button onClick={() => { setChatInput(`Summarize: ${modalData.title}`); setView("chat"); setModal(null); sendMessage(`Summarize: ${modalData.title}`); }} style={{ flex: 1, padding: "9px 0", borderRadius: 9, background: "var(--gradient)", color: "white", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Ask AI About This</button>
+                  <button onClick={() => deleteSource(modalData.id)} style={{ padding: "9px 14px", borderRadius: 9, background: "var(--danger-bg)", color: "var(--danger)", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>Delete</button>
                 </div>
               </div>
             </div>
@@ -2554,14 +2578,14 @@ export default function HealthOS() {
 
           {/* ── PROFILE ── */}
           {modal === "profile" && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 360, boxShadow: "0 24px 80px rgba(0,0,0,.22)", overflow: "hidden" }}>
-              <div style={{ padding: "20px 22px", background: "linear-gradient(135deg,#006C5B,#009B7D)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,#006C5B,#C8A86B)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="user" size={28} /></div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 22, width: 360, boxShadow: "var(--shadow-heavy)", overflow: "hidden" }}>
+              <div style={{ padding: "20px 22px", background: "var(--profile-gradient)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--gradient)", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}><Ic n="user" size={28} /></div>
                 <div style={{ color: "white", fontWeight: 800, fontSize: 15 }}>{t("healthcareAnalyst")}</div>
                 <div style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{t("analystEmail")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
                   {["Pro Plan", "Llama 3.1", "Weaviate"].map(t => (
-                    <span key={t} style={{ padding: "3px 10px", borderRadius: 20, background: "rgba(0,108,91,.3)", color: "#C8A86B", fontSize: 10, fontWeight: 700 }}>{t}</span>
+                    <span key={t} style={{ padding: "3px 10px", borderRadius: 20, background: "var(--primary-intense)", color: "var(--accent)", fontSize: 10, fontWeight: 700 }}>{t}</span>
                   ))}
                 </div>
               </div>
@@ -2574,7 +2598,7 @@ export default function HealthOS() {
                 ))}
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 14 }}>
                   <button onClick={() => { setSettingsTab("general"); setModal("settings"); }} style={{ padding: "9px 0", borderRadius: 9, background: "var(--bg-tint)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}><Ic n="settings" size={13} /> {t("accountSettings")}</button>
-                  <button onClick={() => { setModal(null); toast(t("loggedOut"), "warn"); }} style={{ padding: "9px 0", borderRadius: 9, background: "rgba(239,68,68,0.2)", color: "#EF4444", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("signOut")}</button>
+                  <button onClick={() => { setModal(null); toast(t("loggedOut"), "warn"); }} style={{ padding: "9px 0", borderRadius: 9, background: "var(--danger-bg)", color: "var(--danger)", fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer" }}>{t("signOut")}</button>
                 </div>
               </div>
             </div>
