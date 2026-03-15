@@ -286,8 +286,17 @@ Style requirements:
         )
         
         if images and len(images) > 0:
-            image_base64 = base64.b64encode(images[0]).decode('utf-8')
-            logger.info(f"Successfully generated image for: {slide_title}")
+            # Compress: resize to 800x600 JPEG for smaller PPTX file size
+            from PIL import Image as PILImage
+            import io
+            img = PILImage.open(io.BytesIO(images[0]))
+            img = img.convert('RGB')
+            img = img.resize((800, 600), PILImage.LANCZOS)
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=80, optimize=True)
+            compressed = buffer.getvalue()
+            image_base64 = base64.b64encode(compressed).decode('utf-8')
+            logger.info(f"Image for '{slide_title}': {len(images[0])}B -> {len(compressed)}B")
             return image_base64
         return None
     except Exception as e:

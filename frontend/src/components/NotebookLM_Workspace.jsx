@@ -1055,18 +1055,22 @@ export default function HealthOS() {
           });
         };
 
-        // ── Generate images for ALL content slides (sequential, with progress) ──
-        const slidesForImages = out.slides_data
+        // ── Generate images for content slides (sequential, with progress) ──
+        // Prioritize image-left/right slides, then bullets, limit to 6 max
+        const allContentSlides = out.slides_data
           .map((s, i) => ({ s, i }))
           .filter(({ s, i }) => i > 0 && !s.imageBase64 && s.layout !== 'title');
+        // Prioritize: image layouts first, then bullets, then others
+        const priority = { 'image-left': 0, 'image-right': 0, 'bullets': 1, 'two-column': 2, 'comparison': 2, 'quote': 2, 'timeline': 3 };
+        allContentSlides.sort((a, b) => (priority[a.s.layout] ?? 2) - (priority[b.s.layout] ?? 2));
+        const slidesForImages = allContentSlides.slice(0, 6);
 
         if (slidesForImages.length > 0) {
-          toast(`Generating ${slidesForImages.length} AI images for your slides — please wait...`, "warn");
+          toast(`Generating ${slidesForImages.length} AI images — please wait...`, "warn");
           let generated = 0;
-          // Generate sequentially to avoid API overload
           for (const { s, i } of slidesForImages) {
             try {
-              toast(`Generating image ${generated + 1}/${slidesForImages.length}: ${s.title}...`, "warn");
+              toast(`Image ${generated + 1}/${slidesForImages.length}: ${s.title}...`, "warn");
               const res = await fetch(`${API_URL}/api/generate-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1083,17 +1087,13 @@ export default function HealthOS() {
                 if (result.success && result.imageBase64) {
                   s.imageBase64 = result.imageBase64;
                   generated++;
-                } else {
-                  console.warn(`Image gen returned no image for slide ${i}: ${s.title}`, result.error);
                 }
-              } else {
-                console.warn(`Image gen HTTP ${res.status} for slide ${i}: ${s.title}`);
               }
             } catch (e) {
-              console.error(`Image gen failed for slide ${i}: ${s.title}`, e);
+              console.error(`Image gen failed for slide ${i}:`, e);
             }
           }
-          toast(`${generated}/${slidesForImages.length} images ready! Building presentation...`);
+          toast(`${generated} images ready! Building presentation...`);
         } else {
           toast("Building presentation...", "warn");
         }
@@ -1132,7 +1132,7 @@ export default function HealthOS() {
             if (sd.imageBase64) {
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  data: `data:image/jpeg;base64,${sd.imageBase64}`,
                   x: 0, y: 0, w: 10, h: 5.63,
                   transparency: 75
                 });
@@ -1166,7 +1166,7 @@ export default function HealthOS() {
             if (sd.imageBase64) {
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  data: `data:image/jpeg;base64,${sd.imageBase64}`,
                   x: 0, y: 0.06, w: 10, h: 0.14,
                   transparency: 60
                 });
@@ -1262,9 +1262,9 @@ export default function HealthOS() {
             if (sd.imageBase64) {
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  data: `data:image/jpeg;base64,${sd.imageBase64}`,
                   x: imgX, y: 1.1, w: 4.4, h: 3.7,
-                  rounding: true
+                  rounding: false
                 });
               } catch (e) {
                 addPlaceholder(slide, imgX, 1.1, 4.4, 3.7);
@@ -1325,9 +1325,9 @@ export default function HealthOS() {
               // Split: bullets left, image right
               try {
                 slide.addImage({
-                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  data: `data:image/jpeg;base64,${sd.imageBase64}`,
                   x: 5.15, y: 1.1, w: 4.4, h: 3.7,
-                  rounding: true
+                  rounding: false
                 });
               } catch (e) { /* skip */ }
 
@@ -1390,11 +1390,11 @@ export default function HealthOS() {
         });
 
         await pptx.writeFile({ fileName: `${out.title.replace(/[<>:"/\\|?*]/g, "_")}.pptx` });
-        toast("Presentation downloaded!");
+        toast("Presentation downloaded successfully!");
         return;
       } catch (e) {
         console.error('PPTX generation error:', e);
-        toast("Failed to generate PPTX, downloading as text", "warn");
+        toast(`PPTX export failed: ${e.message || 'Unknown error'}. Try again.`, "error");
       }
     }
     
