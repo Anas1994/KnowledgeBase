@@ -1055,16 +1055,18 @@ export default function HealthOS() {
           });
         };
 
-        // ── Generate images for slides that need them ──
-        const imageSlidesIdx = out.slides_data
+        // ── Generate images for ALL content slides (sequential, with progress) ──
+        const slidesForImages = out.slides_data
           .map((s, i) => ({ s, i }))
-          .filter(({ s, i }) => i > 0 && !s.imageBase64 && ['image-left', 'image-right'].includes(s.layout))
-          .slice(0, 4);
+          .filter(({ s, i }) => i > 0 && !s.imageBase64 && s.layout !== 'title');
 
-        if (imageSlidesIdx.length > 0) {
-          toast(`Generating ${imageSlidesIdx.length} slide images — this may take a moment...`, "warn");
-          const imagePromises = imageSlidesIdx.map(async ({ s }) => {
+        if (slidesForImages.length > 0) {
+          toast(`Generating ${slidesForImages.length} AI images for your slides — please wait...`, "warn");
+          let generated = 0;
+          // Generate sequentially to avoid API overload
+          for (const { s, i } of slidesForImages) {
             try {
+              toast(`Generating image ${generated + 1}/${slidesForImages.length}: ${s.title}...`, "warn");
               const res = await fetch(`${API_URL}/api/generate-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1073,21 +1075,25 @@ export default function HealthOS() {
                   slide_content: (s.bullets || []).join(', '),
                   layout: s.layout || 'bullets',
                   theme: themeName,
-                  image_keyword: s.imageKeyword || ''
+                  image_keyword: s.imageKeyword || s.title
                 })
               });
               if (res.ok) {
                 const result = await res.json();
                 if (result.success && result.imageBase64) {
                   s.imageBase64 = result.imageBase64;
+                  generated++;
+                } else {
+                  console.warn(`Image gen returned no image for slide ${i}: ${s.title}`, result.error);
                 }
+              } else {
+                console.warn(`Image gen HTTP ${res.status} for slide ${i}: ${s.title}`);
               }
             } catch (e) {
-              console.error('Image gen failed:', s.title);
+              console.error(`Image gen failed for slide ${i}: ${s.title}`, e);
             }
-          });
-          await Promise.all(imagePromises);
-          toast("Images ready! Building presentation...");
+          }
+          toast(`${generated}/${slidesForImages.length} images ready! Building presentation...`);
         } else {
           toast("Building presentation...", "warn");
         }
@@ -1122,6 +1128,16 @@ export default function HealthOS() {
 
           if (isTitle) {
             // ═══ TITLE / COVER SLIDE ═══
+            // Background image (subtle, behind text)
+            if (sd.imageBase64) {
+              try {
+                slide.addImage({
+                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  x: 0, y: 0, w: 10, h: 5.63,
+                  transparency: 75
+                });
+              } catch (e) { /* skip bg image */ }
+            }
             slide.addText(sd.title || out.title, {
               x: 0.8, y: 1.3, w: 8.4, h: 1.0,
               fontSize: 36, bold: true, color: 'FFFFFF',
@@ -1145,6 +1161,17 @@ export default function HealthOS() {
             addTitle(slide, sd.title || `Slide ${idx + 1}`);
             const bullets = sd.bullets || [];
             const mid = Math.ceil(bullets.length / 2);
+
+            // Background accent image strip if available
+            if (sd.imageBase64) {
+              try {
+                slide.addImage({
+                  data: `data:image/png;base64,${sd.imageBase64}`,
+                  x: 0, y: 0.06, w: 10, h: 0.14,
+                  transparency: 60
+                });
+              } catch (e) { /* skip */ }
+            }
 
             // Left card
             slide.addShape('roundRect', {
