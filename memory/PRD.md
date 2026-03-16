@@ -1,38 +1,36 @@
 # HealthOS - Health Intelligence Workspace
 
 ## Original Problem Statement
-Build a healthcare research workspace with dual-theme UI, English/Arabic localization, multi-format source ingestion, and AI-powered content generation including professional slide decks with AI-generated images and infographics.
-
-## Core Requirements
-- **UI & Theming**: Dark/light theme toggle with CSS custom properties
-- **Localization**: English/Arabic with full RTL support
-- **Source Ingestion**: Accept .docx, .pdf, .xlsx, .pptx, and image files
-- **Content Generation**: Slides, reports, mind maps, flashcards, quizzes, audio scripts, data tables, infographics
-- **Slide Deck**: Professional PPTX with AI-generated contextual images on ALL slides
-- **Chat**: Multi-turn conversation with translation, summarization, analysis, markdown rendering
+Build a healthcare research workspace with dual-theme UI, English/Arabic localization, multi-format source ingestion, and AI-powered content generation including professional slide decks and infographics with AI-generated contextual images.
 
 ## Architecture
 - **Frontend**: React.js, Context API, CSS Custom Properties, HTML5 Canvas, pptxgenjs
 - **Backend**: FastAPI, MongoDB, OpenAI (Emergent LLM Key) for text + image generation (gpt-image-1)
 
+## Key Files
+- `/app/frontend/src/components/NotebookLM_Workspace.jsx` - Main UI + PPTX builder + MdText renderer
+- `/app/frontend/src/utils/infographicRenderer.js` - Infographic Canvas renderer with AI images
+- `/app/backend/server.py` - API endpoints + AI generation logic
+
 ## What's Implemented
 - [x] Dual theme (dark/light) with toggle
 - [x] English/Arabic localization with RTL
 - [x] Source upload: .docx, .pdf, .xlsx, .pptx, images
-- [x] All generation types
-- [x] Canvas-based infographic with contextual visual selection
-- [x] Professional PPTX with AI images on ALL slides (sequential generation with progress)
-- [x] Enhanced chat: translation, multi-turn history, depth settings, markdown rendering, quick action chips
-- [x] Budget exceeded error handling with helpful user messages
+- [x] All generation types: slides, report, mindmap, flashcards, quiz, audio, datatable, infographic
+- [x] Canvas infographic with contextual visuals + AI-generated images
+- [x] Professional PPTX with AI images, proper alignment, teal/gold theme
+- [x] Enhanced chat: translation, multi-turn history, depth settings, markdown, quick actions
+- [x] Image compression (800x600 JPEG ~40-50KB) for fast exports
+- [x] Budget error handling with user-friendly messages
 
 ## Completed Fix Log
-- **Mar 12, Session 1**: Fixed irrelevant visuals in infographic generation
-- **Mar 12, Session 2**: PPTX overhaul with AI images, proper alignment, teal/gold theme
-- **Mar 12, Session 3**: Chat enhancements (translation, history, depth, markdown, quick actions)
-- **Mar 12, Session 4**: Fixed chat translation timeout (reduced content size, budget error handling)
-- **Mar 15, Session 5**: Fixed PPTX image generation — now generates AI images for ALL content slides (not just image-left/right), sequential with progress toasts. Title slide gets subtle background image. Two-column gets image accent strip.
+- **Mar 12, S1**: Fixed irrelevant visuals in infographic generation
+- **Mar 12, S2**: PPTX overhaul with AI images, proper alignment, teal/gold theme
+- **Mar 12, S3**: Chat enhancements (translation, history, depth, markdown, quick actions)
+- **Mar 12, S4**: Fixed chat translation timeout + budget error handling
+- **Mar 15, S5**: PPTX image generation — all content slides get images, compressed JPEG
+- **Mar 15, S6**: Infographic AI images — extracted renderer to utility, generates 6 contextual images per infographic
 
 ## Backlog
-- P2: Extract infographic renderer into utility module
 - P2: Visual slide preview in output modal
 - P3: Voice input for chat
