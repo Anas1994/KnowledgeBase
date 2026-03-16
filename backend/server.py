@@ -909,6 +909,7 @@ For each section provide:
 5. An icon from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
 6. visualType: one of "stat", "process", "comparison", or "none". Default to "none" unless data clearly justifies a visual.
 7. visualReason: A brief 5-10 word justification for your visualType choice.
+8. imageKeyword: A specific 2-4 word phrase for the AI image generator to create a relevant visual for this section (e.g., "hospital patient monitoring", "clinical workflow automation", "remote health dashboard"). Be specific and contextual.
 
 Format your response as JSON array:
 [
@@ -921,6 +922,7 @@ Format your response as JSON array:
     "icon": "chart",
     "visualType": "stat",
     "visualReason": "Content contains a specific percentage metric",
+    "imageKeyword": "healthcare data analytics",
     "color": "blue"
   }}
 ]
@@ -948,6 +950,7 @@ Only output the JSON array, no other text."""
             section.setdefault('statLabel', '')
             section.setdefault('bullets', [])
             section.setdefault('color', 'blue')
+            section.setdefault('imageKeyword', section.get('title', ''))
     except Exception as e:
         logger.error(f"Infographic JSON parse error: {e}")
         infographic_data = [
