@@ -170,16 +170,43 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
     }
   }, [templateSections, projectName, clientName, tone, additionalCtx, toast]);
 
-  const exportDocx = useCallback(() => {
-    if (!rfpResult) return;
-    const blob = new Blob([rfpResult.full_text], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${(projectName || 'RFP').replace(/[<>:"/\\|?*]/g, "_")}_RFP.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast("RFP exported as document");
-  }, [rfpResult, projectName, toast]);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const exportFile = useCallback(async (format) => {
+    if (!rfpResult || exporting) return;
+    setExporting(true);
+    setExportMenuOpen(false);
+    toast(`Exporting as ${format.toUpperCase()}...`, "warn");
+    
+    try {
+      const res = await fetch(`${API_URL}/api/rfp/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sections: rfpResult.sections,
+          project_name: rfpResult.project_name || projectName,
+          client_name: rfpResult.client_name || clientName,
+          tone: rfpResult.tone || tone,
+          source_names: rfpResult.source_names || [],
+          format
+        })
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const ext = format === 'pdf' ? 'pdf' : 'docx';
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(projectName || 'RFP').replace(/[<>:"/\\|?*]/g, "_")}_RFP.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(`RFP exported as ${format.toUpperCase()}`);
+    } catch (e) {
+      console.error('Export error:', e);
+      toast(`Export failed. Please try again.`, "error");
+    }
+    setExporting(false);
+  }, [rfpResult, projectName, clientName, tone, exporting, toast]);
 
   const copyAll = useCallback(() => {
     if (!rfpResult) return;
@@ -213,8 +240,15 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
 
   const accentColor = "#F97316";
 
+  // Close export menu on outside click
+  const handleOverlayClick = (e) => {
+    if (exportMenuOpen && !e.target.closest('[data-testid="rfp-export-menu"]') && !e.target.closest('[data-testid="rfp-export-btn"]')) {
+      setExportMenuOpen(false);
+    }
+  };
+
   return (
-    <div data-testid="rfp-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)" }}>
+    <div data-testid="rfp-modal-overlay" onClick={handleOverlayClick} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(6px)" }}>
 
       {/* ── STEP 1 & 2: Upload + Configure ── */}
       {(step === 1 || step === 2) && (
@@ -366,8 +400,33 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{rfpResult.project_name || "RFP Document"}</div>
               <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>For: {rfpResult.client_name || "Organization"} · {rfpResult.sections?.length || 0} sections · {rfpResult.tone} tone</div>
             </div>
-            <div style={{ display: "flex", gap: 5 }}>
-              <button data-testid="rfp-export-btn" onClick={exportDocx} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: accentColor + "18", color: accentColor, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer" }}>{Icons.download} Export</button>
+            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+              <div style={{ position: "relative" }}>
+                <button data-testid="rfp-export-btn" onClick={() => setExportMenuOpen(!exportMenuOpen)} disabled={exporting} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: accentColor + "18", color: accentColor, fontSize: 11, fontWeight: 700, border: "none", cursor: exporting ? "wait" : "pointer", opacity: exporting ? 0.6 : 1 }}>
+                  {exporting ? <div className="spin" style={{ width: 12, height: 12, border: `2px solid ${accentColor}40`, borderTop: `2px solid ${accentColor}`, borderRadius: "50%" }} /> : Icons.download}
+                  {exporting ? "Exporting..." : "Export"}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {exportMenuOpen && (
+                  <div data-testid="rfp-export-menu" style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: "var(--bg-card)", borderRadius: 10, boxShadow: "0 8px 30px rgba(0,0,0,.18)", border: "1px solid var(--border)", overflow: "hidden", zIndex: 10, minWidth: 160 }}>
+                    <button data-testid="rfp-export-docx" onClick={() => exportFile('docx')} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+                      <span style={{ width: 28, height: 28, borderRadius: 6, background: "#2563EB18", color: "#2563EB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800 }}>DOC</span>
+                      <div>
+                        <div>Word Document</div>
+                        <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 400 }}>.docx with headings & styles</div>
+                      </div>
+                    </button>
+                    <div style={{ height: 1, background: "var(--border)" }} />
+                    <button data-testid="rfp-export-pdf" onClick={() => exportFile('pdf')} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>
+                      <span style={{ width: 28, height: 28, borderRadius: 6, background: "#DC262618", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800 }}>PDF</span>
+                      <div>
+                        <div>PDF Document</div>
+                        <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 400 }}>.pdf with formatted layout</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
               <button data-testid="rfp-copy-btn" onClick={copyAll} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "var(--bg-tint)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 700, border: "1px solid var(--border)", cursor: "pointer" }}>{Icons.copy} Copy</button>
               <button data-testid="rfp-save-btn" onClick={saveNote} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "var(--bg-tint)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 700, border: "1px solid var(--border)", cursor: "pointer" }}>{Icons.save} Save</button>
               <button data-testid="rfp-regen-btn" onClick={regenerate} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "var(--bg-tint)", color: "var(--text-secondary)", fontSize: 11, fontWeight: 700, border: "1px solid var(--border)", cursor: "pointer" }}>{Icons.refresh} Regen</button>

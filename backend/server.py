@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -1372,6 +1373,332 @@ Return JSON array only:
         rfp_sections = [{"section": s, "content": f"Content for {s}."} for s in req.template_sections]
     
     return {"sections": rfp_sections, "source_names": source_names}
+
+
+class RFPExportRequest(BaseModel):
+    sections: List[dict]
+    project_name: str = ""
+    client_name: str = ""
+    tone: str = "Formal"
+    source_names: List[str] = []
+    format: str = "docx"  # "docx" or "pdf"
+
+
+@api_router.post("/rfp/export")
+async def export_rfp(req: RFPExportRequest):
+    """Export RFP as a professionally formatted DOCX or PDF"""
+    import re
+    date_str = datetime.now().strftime('%B %d, %Y')
+    
+    if req.format == "docx":
+        return _export_docx(req, date_str)
+    elif req.format == "pdf":
+        return _export_pdf(req, date_str)
+    else:
+        raise HTTPException(status_code=400, detail="Format must be 'docx' or 'pdf'")
+
+
+def _export_docx(req: RFPExportRequest, date_str: str):
+    """Generate a professionally formatted Word document"""
+    from docx import Document
+    from docx.shared import Inches, Pt, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.section import WD_ORIENT
+    import re
+    
+    doc = Document()
+    
+    # Page margins
+    for section in doc.sections:
+        section.top_margin = Cm(2.5)
+        section.bottom_margin = Cm(2.5)
+        section.left_margin = Cm(3)
+        section.right_margin = Cm(3)
+    
+    # Styles
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = 'Calibri'
+    font.size = Pt(11)
+    font.color.rgb = RGBColor(51, 51, 51)
+    style.paragraph_format.space_after = Pt(6)
+    style.paragraph_format.line_spacing = 1.15
+    
+    # Title
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_para.space_after = Pt(4)
+    run = title_para.add_run('REQUEST FOR PROPOSAL')
+    run.font.size = Pt(12)
+    run.font.color.rgb = RGBColor(249, 115, 22)
+    run.font.bold = True
+    run.font.name = 'Calibri'
+    
+    # Project name
+    name_para = doc.add_paragraph()
+    name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    name_para.space_after = Pt(8)
+    run = name_para.add_run(req.project_name or 'Project')
+    run.font.size = Pt(26)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0, 77, 64)
+    run.font.name = 'Calibri'
+    
+    # Divider line
+    divider = doc.add_paragraph()
+    divider.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    divider.space_before = Pt(4)
+    divider.space_after = Pt(4)
+    run = divider.add_run('━' * 40)
+    run.font.size = Pt(8)
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    
+    # Meta info
+    meta = doc.add_paragraph()
+    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    meta.space_after = Pt(4)
+    run = meta.add_run(f'Prepared for: ')
+    run.font.size = Pt(11)
+    run.font.color.rgb = RGBColor(100, 100, 100)
+    run = meta.add_run(req.client_name or 'Organization')
+    run.font.size = Pt(11)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(51, 51, 51)
+    
+    date_para = doc.add_paragraph()
+    date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    date_para.space_after = Pt(2)
+    run = date_para.add_run(f'{date_str}  ·  {req.tone} Tone')
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+    
+    # Sources
+    if req.source_names:
+        src_para = doc.add_paragraph()
+        src_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        src_para.space_after = Pt(12)
+        run = src_para.add_run('Sources: ')
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(100, 100, 100)
+        run = src_para.add_run(' | '.join(req.source_names))
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(124, 58, 237)
+    
+    # Page break before sections
+    doc.add_page_break()
+    
+    # Table of Contents header
+    toc_heading = doc.add_heading('Table of Contents', level=1)
+    for run in toc_heading.runs:
+        run.font.color.rgb = RGBColor(0, 77, 64)
+        run.font.size = Pt(18)
+    
+    for i, sec in enumerate(req.sections):
+        toc_para = doc.add_paragraph()
+        toc_para.space_after = Pt(3)
+        run = toc_para.add_run(f'{i + 1}.  {sec.get("section", "Section")}')
+        run.font.size = Pt(11)
+        run.font.color.rgb = RGBColor(51, 51, 51)
+    
+    doc.add_page_break()
+    
+    # Sections
+    for i, sec in enumerate(req.sections):
+        # Section heading
+        heading = doc.add_heading(f'{i + 1}. {sec.get("section", "Section")}', level=1)
+        heading.space_before = Pt(18)
+        for run in heading.runs:
+            run.font.color.rgb = RGBColor(0, 77, 64)
+            run.font.size = Pt(16)
+            run.font.name = 'Calibri'
+        
+        # Section content
+        content = sec.get('content', '')
+        paragraphs = content.split('\n\n')
+        
+        for para_text in paragraphs:
+            para_text = para_text.strip()
+            if not para_text:
+                continue
+            
+            para = doc.add_paragraph()
+            para.space_after = Pt(8)
+            para.paragraph_format.first_line_indent = Cm(0)
+            
+            # Split by citations and render them differently
+            parts = re.split(r'(\[Source:[^\]]+\])', para_text)
+            for part in parts:
+                if part.startswith('[Source:'):
+                    run = para.add_run(part)
+                    run.font.size = Pt(9)
+                    run.font.color.rgb = RGBColor(124, 58, 237)
+                    run.font.italic = True
+                else:
+                    run = para.add_run(part)
+                    run.font.size = Pt(11)
+                    run.font.color.rgb = RGBColor(55, 65, 81)
+    
+    # Footer
+    footer_para = doc.add_paragraph()
+    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_para.space_before = Pt(24)
+    run = footer_para.add_run('━' * 40)
+    run.font.size = Pt(8)
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    
+    footer = doc.add_paragraph()
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = footer.add_run('Generated by HealthOS  ·  AI-Powered Research Assistant')
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+    
+    # Save to buffer
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    
+    filename = f"{(req.project_name or 'RFP').replace(' ', '_')}_RFP.docx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
+def _export_pdf(req: RFPExportRequest, date_str: str):
+    """Generate a professionally formatted PDF document"""
+    from fpdf import FPDF
+    import re
+    
+    class RFPPDF(FPDF):
+        def header(self):
+            if self.page_no() > 1:
+                self.set_font('Helvetica', 'I', 8)
+                self.set_text_color(148, 163, 184)
+                self.cell(0, 8, f'{self.project_name} - RFP', align='L')
+                self.cell(0, 8, f'Page {self.page_no()}', align='R', new_x="LMARGIN", new_y="NEXT")
+                self.set_draw_color(200, 168, 107)
+                self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+                self.ln(4)
+        
+        def footer(self):
+            self.set_y(-15)
+            self.set_font('Helvetica', 'I', 8)
+            self.set_text_color(148, 163, 184)
+            self.cell(0, 10, 'Generated by HealthOS  |  AI-Powered Research Assistant', align='C')
+    
+    pdf = RFPPDF()
+    pdf.project_name = req.project_name or 'Project'
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.set_margins(25, 20, 25)
+    
+    # Title page
+    pdf.add_page()
+    pdf.ln(40)
+    
+    # "REQUEST FOR PROPOSAL"
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(249, 115, 22)
+    pdf.cell(0, 8, 'REQUEST FOR PROPOSAL', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+    
+    # Project name
+    pdf.set_font('Helvetica', 'B', 28)
+    pdf.set_text_color(0, 77, 64)
+    pdf.multi_cell(0, 12, req.project_name or 'Project', align='C')
+    pdf.ln(4)
+    
+    # Divider
+    pdf.set_draw_color(200, 168, 107)
+    pdf.set_line_width(0.5)
+    cx = pdf.w / 2
+    pdf.line(cx - 30, pdf.get_y(), cx + 30, pdf.get_y())
+    pdf.ln(8)
+    
+    # Meta
+    pdf.set_font('Helvetica', '', 11)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 6, f'Prepared for: ', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(51, 51, 51)
+    pdf.cell(0, 8, req.client_name or 'Organization', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(148, 163, 184)
+    pdf.cell(0, 6, f'{date_str}  |  {req.tone} Tone', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(6)
+    
+    # Sources
+    if req.source_names:
+        pdf.set_font('Helvetica', 'I', 9)
+        pdf.set_text_color(124, 58, 237)
+        src_text = 'Sources: ' + ' | '.join(req.source_names)
+        pdf.multi_cell(0, 5, src_text, align='C')
+    
+    # Table of Contents
+    pdf.add_page()
+    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_text_color(0, 77, 64)
+    pdf.cell(0, 12, 'Table of Contents', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    pdf.set_draw_color(200, 168, 107)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 50, pdf.get_y())
+    pdf.ln(6)
+    
+    for i, sec in enumerate(req.sections):
+        pdf.set_font('Helvetica', '', 11)
+        pdf.set_text_color(51, 51, 51)
+        pdf.cell(0, 7, f'  {i + 1}.  {sec.get("section", "Section")}', new_x="LMARGIN", new_y="NEXT")
+    
+    # Sections
+    for i, sec in enumerate(req.sections):
+        pdf.add_page()
+        
+        # Section number + title
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_text_color(0, 77, 64)
+        title = f'{i + 1}. {sec.get("section", "Section")}'
+        pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
+        
+        # Underline
+        pdf.set_draw_color(0, 77, 64)
+        pdf.set_line_width(0.8)
+        pdf.line(pdf.l_margin, pdf.get_y() + 1, pdf.l_margin + pdf.get_string_width(title), pdf.get_y() + 1)
+        pdf.ln(8)
+        
+        # Content
+        content = sec.get('content', '')
+        paragraphs = content.split('\n\n')
+        
+        for para_text in paragraphs:
+            para_text = para_text.strip()
+            if not para_text:
+                continue
+            
+            # Split by citations
+            parts = re.split(r'(\[Source:[^\]]+\])', para_text)
+            for part in parts:
+                if part.startswith('[Source:'):
+                    pdf.set_font('Helvetica', 'I', 9)
+                    pdf.set_text_color(124, 58, 237)
+                    pdf.write(5.5, part)
+                else:
+                    pdf.set_font('Helvetica', '', 11)
+                    pdf.set_text_color(55, 65, 81)
+                    pdf.write(5.5, part)
+            pdf.ln(8)
+    
+    # Save to buffer
+    buf = io.BytesIO()
+    pdf.output(buf)
+    buf.seek(0)
+    
+    filename = f"{(req.project_name or 'RFP').replace(' ', '_')}_RFP.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 # Include the router in the main app
 app.include_router(api_router)
