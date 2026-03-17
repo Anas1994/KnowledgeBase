@@ -156,6 +156,8 @@ export const translations = {
     infographicDesc: "Visual data summary",
     dataTable: "Data Table",
     dataTableDesc: "Structured extraction",
+    rfpGenerator: "RFP Generator",
+    rfpGeneratorDesc: "AI-powered RFP builder",
     
     // Upload Modal
     addSourceTitle: "Add Source",
@@ -386,6 +388,8 @@ export const translations = {
     infographicDesc: "ملخص بصري للبيانات",
     dataTable: "جدول بيانات",
     dataTableDesc: "استخراج منظم",
+    rfpGenerator: "مولد RFP",
+    rfpGeneratorDesc: "إنشاء RFP بالذكاء الاصطناعي",
     
     // Upload Modal
     addSourceTitle: "إضافة مصدر",

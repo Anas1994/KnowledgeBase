@@ -3,6 +3,7 @@ import { useLanguage } from "../i18n/LanguageContext";
 import { useTheme } from "../theme/ThemeContext";
 import { renderInfographicWithImages } from "../utils/infographicRenderer";
 import { renderVisualReport } from "../utils/reportRenderer";
+import RFPGenerator from "./RFPGenerator";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -135,6 +136,7 @@ const IC = {
   sun:       "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42",
   moon:      "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
   image:     "M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+  rfp:       "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 14h6M9 18h6M9 10h2",
 };
 const Ic = ({ n, size = 16, sw = 1.75, fill = "none", stroke = "currentColor", cls = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" className={cls}>
@@ -331,6 +333,7 @@ const STUDIO_TOOLS = [
   { id: "quiz",       label: "Quiz",             labelKey: "quiz",             icon: "quiz",    desc: "MCQ, T/F, short answer",    descKey: "quizDesc",              color: "#0ea5e9", ext: "json" },
   { id: "infographic",label: "Infographic",      labelKey: "infographic",      icon: "chart",   desc: "Visual data summary",       descKey: "infographicDesc",       color: "#C026D3", ext: "svg" },
   { id: "datatable",  label: "Data Table",       labelKey: "dataTable",        icon: "table",   desc: "Structured extraction",     descKey: "dataTableDesc",         color: "#22C55E", ext: "csv" },
+  { id: "rfp",        label: "RFP Generator",    labelKey: "rfpGenerator",     icon: "rfp",     desc: "AI-powered RFP builder",    descKey: "rfpGeneratorDesc",      color: "#F97316", ext: "txt" },
 ];
 const ACTIVITY_LOG_INIT = [
   { id: 1, action: "Source indexed",    detail: "Transformer Deep Dive",          time: "2h ago",  color: "#22C55E" },
@@ -389,6 +392,8 @@ export default function HealthOS() {
   // Chat
   const [chatDepth, setChatDepth] = useState("balanced");
   const [showChatSettings, setShowChatSettings] = useState(false);
+  // RFP
+  const [rfpOpen, setRfpOpen] = useState(false);
   // Tags
   const [activeTags, setActiveTags] = useState([]);
   // Refs
@@ -780,6 +785,12 @@ export default function HealthOS() {
   const generateOutput = useCallback(async (tool) => {
     const indexed = sources.filter(s => s.status === "indexed");
     if (!indexed.length) { toast("Index at least one source first", "warn"); return; }
+    
+    // RFP has its own dedicated modal
+    if (tool.id === 'rfp') {
+      setRfpOpen(true);
+      return;
+    }
     
     setGenTool(tool.id);
     toast(`Generating ${tool.label} with AI... This may take a moment.`, "warn");
@@ -2625,6 +2636,15 @@ export default function HealthOS() {
 
       {/* ── TOASTS ── */}
       <Toast toasts={toasts} dismiss={dismissToast} />
+
+      {/* ── RFP GENERATOR ── */}
+      <RFPGenerator
+        open={rfpOpen}
+        onClose={() => setRfpOpen(false)}
+        toast={toast}
+        sources={sources}
+        onSaveNote={saveToNotes}
+      />
     </div>
   );
 }
