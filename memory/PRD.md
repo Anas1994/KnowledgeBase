@@ -31,6 +31,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - **Mar 15, S5**: PPTX image generation — all content slides get images, compressed JPEG
 - **Mar 15, S6**: Infographic AI images — extracted renderer to utility, generates 6 contextual images per infographic
 - **Mar 17, S7**: Visual Report overhaul — reduced text (5 sections, 2 bullets max, 8 words), added stat highlights, workflow diagrams, image-first layout
+- **Mar 17, S8**: Infographic overhaul — reduced text (6 sections, 2 bullets max, 4-6 words), larger images (260px), workflow step diagrams, stat cards, no empty space
 
 ## Backlog
 - P2: Visual slide preview in output modal
