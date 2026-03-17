@@ -936,54 +936,55 @@ Sources analyzed: {len(sources)}
     )
 
 async def generate_infographic(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate an infographic with AI-created visuals"""
+    """Generate a HIGHLY VISUAL infographic — image-first, minimal text"""
     
-    prompt = f"""Based on the following content from {len(sources)} sources, create a professional infographic structure.
+    prompt = f"""Based on the following content from {len(sources)} sources, create a HIGHLY VISUAL infographic. This will be rendered as an image-first visual — prioritize visuals, workflows, and stats over text.
 
 SOURCES: {', '.join(sources)}
 
 CONTENT:
 {content}
 
-Create an infographic with 6-7 sections that accurately represent the source content.
-
-CRITICAL RULES FOR VISUAL TYPE SELECTION:
-- Only assign a visualType when the section content GENUINELY supports it.
-- "stat" → ONLY if the section has a real percentage or measurable numeric stat extracted from the content (e.g., "85% success rate", "92% coverage"). Do NOT invent statistics.
-- "process" → ONLY if the section describes a clear sequential process with numbered steps (e.g., "4 Stages of Development").
-- "comparison" → ONLY if the section compares multiple items with quantifiable differences.
-- "none" → Use this for sections that are purely descriptive, conceptual, or qualitative. This is the DEFAULT. Most sections should use "none" unless there is a strong data-driven reason for a visual.
+Create exactly 6 sections. Each section is IMAGE-DOMINANT with minimal text.
 
 For each section provide:
-1. A clear section title (max 6 words)
-2. A key statistic ONLY if one genuinely exists in the source content. If no real stat exists, use an empty string "".
-3. A short stat label (under 5 words) — empty string if no stat
-4. 3-4 detailed bullet points (15-25 words each) drawn from the actual content
-5. An icon from: chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
-6. visualType: one of "stat", "process", "comparison", or "none". Default to "none" unless data clearly justifies a visual.
-7. visualReason: A brief 5-10 word justification for your visualType choice.
-8. imageKeyword: A specific 2-4 word phrase for the AI image generator to create a relevant visual for this section (e.g., "hospital patient monitoring", "clinical workflow automation", "remote health dashboard"). Be specific and contextual.
+1. title: Section heading (max 5 words)
+2. subtitle: Single-sentence takeaway (max 10 words)
+3. bullets: ONLY 2 short bullet points (max 8 words each) — key data only, no sentences
+4. stat: A key number/metric from the content (e.g., "85%", "24/7", "5 Phases", "3x"). Use "" if none.
+5. statLabel: Short label for stat (max 4 words). Use "" if no stat.
+6. imageKeyword: Specific 3-5 word phrase for AI image (e.g., "remote patient monitoring dashboard", "clinical team hospital ward")
+7. visualType: Choose the BEST visual:
+   - "workflow" — for processes/flows with steps (use for 2-3 sections)
+   - "stat" — for sections with numeric highlights (use for 1-2 sections)
+   - "none" — only if nothing fits
+8. workflowSteps: If visualType is "workflow", list 3-5 step labels (max 4 words each)
+9. icon: from chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
 
-Format your response as JSON array:
+Format as JSON array:
 [
   {{
     "sectionNumber": 1,
     "title": "Section Title",
-    "stat": "85%",
-    "statLabel": "Key Metric",
-    "bullets": ["Point 1", "Point 2"],
-    "icon": "chart",
-    "visualType": "stat",
-    "visualReason": "Content contains a specific percentage metric",
-    "imageKeyword": "healthcare data analytics",
-    "color": "blue"
+    "subtitle": "One line takeaway",
+    "bullets": ["Short point one", "Short point two"],
+    "stat": "5",
+    "statLabel": "Key Modules",
+    "imageKeyword": "specific visual concept phrase",
+    "visualType": "workflow",
+    "workflowSteps": ["Step One", "Step Two", "Step Three"],
+    "icon": "chart"
   }}
 ]
 
-IMPORTANT: Do NOT fabricate statistics. If the source content doesn't contain real numbers or percentages, set stat to "" and visualType to "none". It is better to have a clean text section than a misleading chart.
-Only output the JSON array, no other text."""
+RULES:
+- MINIMAL TEXT. Max 2 bullets per section, max 8 words each. No long sentences.
+- At least 2 sections MUST have visualType "workflow" with workflowSteps
+- At least 1 section MUST have visualType "stat" with a real number
+- Every section MUST have subtitle and imageKeyword
+- Only output the JSON array, no other text."""
 
-    response = await generate_with_ai(prompt, "You are an expert infographic designer. Create visually engaging, data-driven infographic content.")
+    response = await generate_with_ai(prompt, "You are a visual infographic designer. Create image-heavy, minimal-text infographic structures.")
     
     # Parse JSON response
     try:
@@ -995,13 +996,16 @@ Only output the JSON array, no other text."""
                 response_clean = response_clean[4:]
         infographic_data = json.loads(response_clean)
         
-        # Ensure all sections have required fields
+        # Ensure all sections have required fields + enforce limits
         for section in infographic_data:
             section.setdefault('visualType', 'none')
             section.setdefault('icon', 'briefcase')
             section.setdefault('stat', '')
             section.setdefault('statLabel', '')
+            section.setdefault('subtitle', '')
             section.setdefault('bullets', [])
+            section['bullets'] = section['bullets'][:2]  # Hard cap at 2 bullets
+            section.setdefault('workflowSteps', [])
             section.setdefault('color', 'blue')
             section.setdefault('imageKeyword', section.get('title', ''))
     except Exception as e:

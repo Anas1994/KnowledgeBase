@@ -1,0 +1,99 @@
+{
+  "summary": "Iteration 15: Verified Infographic Minimal-Text feature. Backend POST /api/generate with output_type='infographic' returns exactly 6 sections with 2 bullets max per section (under 10 words each), subtitles, stats/statLabels, workflowSteps for workflow sections, and imageKeywords. visualType distribution shows 3 workflow + 2 stat + 1 none (not all 'none'). Frontend Export button (data-testid='output-export-btn') triggers renderInfographicWithImages function (line 1417). All 13 backend pytest tests passed.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Infographic Modal - OLD outputs",
+        "issues": ["Previously generated infographics stored in DB still show old format with 3-4 bullets per section. New generations follow minimal-text format correctly."]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "1. Backend API health check - returns 200",
+    "2. Backend GET /api/sources - 3 indexed sources available",
+    "3. Backend POST /api/generate with output_type='infographic' returns 200",
+    "4. Backend: Infographic has exactly 6 sections (requirement met)",
+    "5. Backend: All sections have max 2 bullets (requirement met)",
+    "6. Backend: All bullets under 10 words (4-5 words each)",
+    "7. Backend: All sections have subtitles",
+    "8. Backend: All sections have imageKeyword for AI image generation",
+    "9. Backend: visualType distribution: 3 workflow + 2 stat + 1 none (not all 'none')",
+    "10. Backend: At least 2 workflow sections present (found 3)",
+    "11. Backend: Workflow sections have workflowSteps arrays with 4-5 steps each",
+    "12. Backend: Stat sections have stat values and labels",
+    "13. Backend: Structure summary test passed",
+    "14. Frontend: App loads correctly at https://ai-insight-canvas.preview.emergentagent.com",
+    "15. Frontend: Studio panel shows Infographic tool with 'Visual data summary' description",
+    "16. Frontend: Infographic tool generates new output when clicked",
+    "17. Frontend: Infographic modal displays 6 sections with structured content",
+    "18. Frontend: Export button visible with data-testid='output-export-btn'",
+    "19. Frontend: Export button clickable and initiates export process",
+    "20. Frontend: renderInfographicWithImages imported in NotebookLM_Workspace.jsx (line 4)",
+    "21. Frontend: downloadOutput function calls renderInfographicWithImages for infographic type (line 1415-1418)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_infographic_minimal_text.py",
+    "/app/test_reports/pytest/infographic_minimal_text_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [
+    "server.py (line 938-1074): generate_infographic() correctly implements minimal-text prompt with 6 sections, 2 bullets max, visualType distribution, workflowSteps, and imageKeyword requirements",
+    "server.py (line 1007): Hard cap enforced: section['bullets'] = section['bullets'][:2]",
+    "server.py (line 956-962): visualType options documented as 'workflow', 'stat', or 'none' with required distribution",
+    "infographicRenderer.js (line 38-370): renderInfographicWithImages generates AI images, renders canvas with large images (260px), workflow diagrams, stat cards",
+    "infographicRenderer.js (line 43): Image generation limited to 6 sections: toGenerate = sections.filter(s => !s.sectionImage).slice(0, 6)",
+    "NotebookLM_Workspace.jsx (line 1415-1418): Export triggers renderInfographicWithImages for infographic type outputs"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_infographic_minimal_text.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (13/13 pytest tests passed)",
+    "frontend": "100% (8/8 UI verifications passed)"
+  },
+
+  "seed_data_creation": "Used existing indexed sources: SOW-H@H, H@H Phased Scope, Slide Deck",
+
+  "retest_needed": false,
+
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Infographic minimal-text feature fully verified. Backend returns exactly 6 sections with 2 bullets max each (4-5 words typical), visualType='workflow' or 'stat' (not all 'none'), workflowSteps for workflow sections, and imageKeyword for each section. Frontend Export button calls renderInfographicWithImages which generates AI images for 6 sections and renders canvas as PNG with large images (260px), workflow step diagrams, and stat highlight cards. The existing infographics in DB may have old format (3-4 bullets); newly generated infographics follow the new minimal-text structure.",
+
+  "verified_requirements": {
+    "6_sections_exactly": "VERIFIED - API returns exactly 6 sections",
+    "2_bullets_max_per_section": "VERIFIED - All sections have max 2 bullets",
+    "bullets_under_10_words": "VERIFIED - All bullets are 4-6 words (well under limit)",
+    "subtitle_per_section": "VERIFIED - All sections have subtitles",
+    "imageKeyword_per_section": "VERIFIED - All sections have specific imageKeywords",
+    "visualType_workflow_or_stat": "VERIFIED - Distribution: 3 workflow, 2 stat, 1 none (not all 'none')",
+    "at_least_2_workflow_sections": "VERIFIED - Found 3 workflow sections with workflowSteps",
+    "workflowSteps_for_workflow": "VERIFIED - Workflow sections have 4-5 step arrays",
+    "stat_values_present": "VERIFIED - Stat sections have stat values (e.g., '40+', '5', '4') with labels",
+    "export_triggers_renderInfographicWithImages": "VERIFIED - downloadOutput calls renderInfographicWithImages for type='infographic'"
+  },
+
+  "sample_generated_infographic": {
+    "sections": 6,
+    "section_titles": ["Hospital At Home Overview", "Core Clinical Platform", "Clinician And Patient Apps", "Advanced Capabilities", "Milestone Delivery Flow", "Governance And Safety"],
+    "visualTypes": {"workflow": 3, "stat": 2, "none": 1},
+    "sections_with_workflowSteps": 3,
+    "bullets_distribution": "2 bullets per section (12 total)",
+    "bullet_word_counts": "All between 4-6 words",
+    "stats": ["3 Major Phases", "6 Core Modules", "4 User Roles", "40+ Specialties Supported", "5 Delivery Stages", "4 Key Roles"]
+  }
+}
