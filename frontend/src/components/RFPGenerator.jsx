@@ -208,15 +208,19 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
     setExporting(false);
   }, [rfpResult, projectName, clientName, tone, exporting, toast]);
 
+  const stripCitations = (text) => text.replace(/\[Source:[^\]]*\]/g, '').replace(/\s{2,}/g, ' ').trim();
+
   const copyAll = useCallback(() => {
     if (!rfpResult) return;
-    navigator.clipboard?.writeText(rfpResult.full_text).catch(() => {});
+    const cleanText = rfpResult.sections.map(s => `${s.section}\n\n${stripCitations(s.content)}`).join('\n\n---\n\n');
+    navigator.clipboard?.writeText(cleanText).catch(() => {});
     toast("RFP copied to clipboard");
   }, [rfpResult, toast]);
 
   const saveNote = useCallback(() => {
     if (!rfpResult || !onSaveNote) return;
-    onSaveNote({ content: rfpResult.full_text });
+    const cleanText = rfpResult.sections.map(s => `${s.section}\n\n${stripCitations(s.content)}`).join('\n\n---\n\n');
+    onSaveNote({ content: cleanText });
     toast("RFP saved to Notes");
   }, [rfpResult, onSaveNote, toast]);
 
@@ -228,10 +232,10 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
   const printRfp = useCallback(() => {
     const w = window.open('', '_blank');
     if (!w || !rfpResult) return;
-    const html = rfpResult.sections.map(s =>
-      `<h2 style="color:#004D40;border-bottom:2px solid #C8A86B;padding-bottom:8px;margin-top:32px;">${s.section}</h2><div style="font-size:13px;line-height:1.8;color:#333;white-space:pre-wrap;">${s.content}</div>`
+    const html = rfpResult.sections.map((s, i) =>
+      `<h2 style="color:#004D40;border-bottom:2px solid #C8A86B;padding-bottom:8px;margin-top:32px;font-size:18px;">${i + 1}. ${s.section}</h2><div style="font-size:13px;line-height:1.8;color:#374151;white-space:pre-wrap;">${stripCitations(s.content)}</div>`
     ).join('');
-    w.document.write(`<html><head><title>${projectName || 'RFP'}</title><style>body{font-family:'DM Sans',sans-serif;max-width:800px;margin:40px auto;padding:0 20px;}h1{color:#004D40;}</style></head><body><h1>${projectName || 'Request for Proposal'}</h1><p style="color:#666;">Prepared for: ${clientName || 'Organization'} | ${new Date().toLocaleDateString()}</p>${html}</body></html>`);
+    w.document.write(`<html><head><title>${projectName || 'RFP'}</title><style>body{font-family:Calibri,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;}h1{color:#004D40;font-size:28px;}</style></head><body><h1>${projectName || 'Request for Proposal'}</h1><p style="color:#666;">Prepared for: ${clientName || 'Organization'} | ${new Date().toLocaleDateString()}</p>${html}</body></html>`);
     w.document.close();
     w.print();
   }, [rfpResult, projectName, clientName]);
@@ -444,13 +448,6 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
                 <div style={{ fontSize: 26, fontWeight: 800, color: "#1A1F36", marginBottom: 8, letterSpacing: "-0.5px" }}>{rfpResult.project_name || "Project"}</div>
                 <div style={{ fontSize: 13, color: "#64748B", marginBottom: 4 }}>Prepared for: <strong style={{ color: "#1A1F36" }}>{rfpResult.client_name || "Organization"}</strong></div>
                 <div style={{ fontSize: 11, color: "#94A3B8" }}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · {rfpResult.tone} Tone</div>
-                {rfpResult.source_names?.length > 0 && (
-                  <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 5, justifyContent: "center" }}>
-                    {rfpResult.source_names.map((s, i) => (
-                      <span key={i} style={{ padding: "3px 10px", borderRadius: 20, background: "#F3F0FF", color: "#7C3AED", fontSize: 10, fontWeight: 600 }}>{s}</span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Sections */}
@@ -458,20 +455,13 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
                 {(rfpResult.sections || []).map((sec, si) => (
                   <div key={si} style={{ marginTop: 32 }} data-testid={`rfp-section-${si}`}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: 6, background: accentColor, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{si + 1}</div>
+                      <div style={{ width: 24, height: 24, borderRadius: 6, background: "#004D40", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{si + 1}</div>
                       <h2 style={{ fontSize: 16, fontWeight: 800, color: "#004D40", margin: 0 }}>{sec.section}</h2>
                     </div>
                     <div style={{ borderLeft: "3px solid #E5E7EB", paddingLeft: 20, marginLeft: 12 }}>
-                      {sec.content.split('\n\n').filter(Boolean).map((para, pi) => {
-                        // Render citations as purple pills
-                        const rendered = para.split(/(\[Source:[^\]]+\])/g).map((chunk, ci) => {
-                          if (chunk.startsWith('[Source:')) {
-                            return <span key={ci} style={{ display: "inline", padding: "1px 7px", borderRadius: 4, background: "#F3F0FF", color: "#7C3AED", fontSize: 10, fontWeight: 600, whiteSpace: "nowrap" }}>{chunk}</span>;
-                          }
-                          return <span key={ci}>{chunk}</span>;
-                        });
-                        return <p key={pi} style={{ fontSize: 13, color: "#374151", lineHeight: 1.85, margin: "0 0 12px 0" }}>{rendered}</p>;
-                      })}
+                      {sec.content.replace(/\[Source:[^\]]*\]/g, '').split('\n\n').filter(Boolean).map((para, pi) => (
+                        <p key={pi} style={{ fontSize: 13, color: "#374151", lineHeight: 1.85, margin: "0 0 12px 0" }}>{para.trim()}</p>
+                      ))}
                     </div>
                   </div>
                 ))}

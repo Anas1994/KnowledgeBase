@@ -1355,10 +1355,15 @@ Knowledge base:
 {combined}
 
 RULES:
-- For each section write 2 substantial paragraphs (each 3-4 sentences)
-- Include inline citations: [Source: source_name · §relevant_area]
-- Content must reference actual source material
-- Use the project and client names
+- For each section write 2-3 substantial paragraphs (each 3-4 sentences)
+- Content must be grounded in the source material
+- Use the project and client names naturally throughout
+- Do NOT include any citations, source references, or brackets like [Source: ...]
+- For "Evaluation Criteria": define clear scoring criteria, weighting factors, and assessment methodology
+- For "Submission Requirements": specify required documents, formatting guidelines, deadlines, and submission instructions
+- For "Terms & Conditions": include standard legal terms, liability, confidentiality, and compliance requirements
+- For "Budget Considerations": include budget structure, cost categories, payment terms, and financial requirements
+- Every section MUST have at least 2 full paragraphs of substantive content — never leave any section empty
 
 Return JSON array only:
 [{{"section": "Section Title", "content": "Paragraph 1...\\n\\nParagraph 2..."}}]"""
@@ -1398,157 +1403,294 @@ async def export_rfp(req: RFPExportRequest):
         raise HTTPException(status_code=400, detail="Format must be 'docx' or 'pdf'")
 
 
+def _strip_citations(text: str) -> str:
+    """Remove all [Source: ...] citation tags from text"""
+    import re
+    text = re.sub(r'\s*\[Source:[^\]]*\]\s*', ' ', text)
+    text = re.sub(r'\s{2,}', ' ', text)
+    return text.strip()
+
+
 def _export_docx(req: RFPExportRequest, date_str: str):
     """Generate a professionally formatted Word document"""
     from docx import Document
-    from docx.shared import Inches, Pt, Cm, RGBColor
+    from docx.shared import Inches, Pt, Cm, RGBColor, Emu
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.section import WD_ORIENT
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml.ns import qn, nsdecls
+    from docx.oxml import parse_xml
     import re
     
     doc = Document()
     
-    # Page margins
+    # Page setup
     for section in doc.sections:
         section.top_margin = Cm(2.5)
-        section.bottom_margin = Cm(2.5)
-        section.left_margin = Cm(3)
-        section.right_margin = Cm(3)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
     
-    # Styles
+    # -- Define custom styles --
+    # Normal style
     style = doc.styles['Normal']
-    font = style.font
-    font.name = 'Calibri'
-    font.size = Pt(11)
-    font.color.rgb = RGBColor(51, 51, 51)
+    style.font.name = 'Calibri'
+    style.font.size = Pt(11)
+    style.font.color.rgb = RGBColor(55, 65, 81)
     style.paragraph_format.space_after = Pt(6)
-    style.paragraph_format.line_spacing = 1.15
+    style.paragraph_format.line_spacing = 1.3
     
-    # Title
-    title_para = doc.add_paragraph()
-    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title_para.space_after = Pt(4)
-    run = title_para.add_run('REQUEST FOR PROPOSAL')
-    run.font.size = Pt(12)
-    run.font.color.rgb = RGBColor(249, 115, 22)
+    # Heading 1 style (section headers)
+    h1_style = doc.styles['Heading 1']
+    h1_style.font.name = 'Calibri'
+    h1_style.font.size = Pt(18)
+    h1_style.font.bold = True
+    h1_style.font.color.rgb = RGBColor(0, 77, 64)
+    h1_style.paragraph_format.space_before = Pt(24)
+    h1_style.paragraph_format.space_after = Pt(10)
+    h1_style.paragraph_format.keep_with_next = True
+    
+    # Heading 2 style (TOC title)
+    h2_style = doc.styles['Heading 2']
+    h2_style.font.name = 'Calibri'
+    h2_style.font.size = Pt(14)
+    h2_style.font.bold = True
+    h2_style.font.color.rgb = RGBColor(0, 60, 50)
+    h2_style.paragraph_format.space_before = Pt(16)
+    h2_style.paragraph_format.space_after = Pt(8)
+    
+    # ═══════════ TITLE PAGE ═══════════
+    # Top spacing
+    for _ in range(4):
+        p = doc.add_paragraph()
+        p.space_after = Pt(0)
+    
+    # Decorative top bar (using a table as a color block)
+    tbl = doc.add_table(rows=1, cols=1)
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = tbl.cell(0, 0)
+    cell.width = Cm(15)
+    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="004D40"/>')
+    cell.paragraphs[0]._element.get_or_add_pPr().append(shading)
+    cell_para = cell.paragraphs[0]
+    cell_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cell_para.space_before = Pt(20)
+    cell_para.space_after = Pt(20)
+    run = cell_para.add_run('REQUEST FOR PROPOSAL')
+    run.font.size = Pt(13)
     run.font.bold = True
+    run.font.color.rgb = RGBColor(200, 168, 107)
     run.font.name = 'Calibri'
+    run.font.letter_spacing = Pt(3)
+    
+    doc.add_paragraph().space_after = Pt(16)
     
     # Project name
     name_para = doc.add_paragraph()
     name_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    name_para.space_after = Pt(8)
+    name_para.space_after = Pt(6)
     run = name_para.add_run(req.project_name or 'Project')
-    run.font.size = Pt(26)
+    run.font.size = Pt(30)
     run.font.bold = True
     run.font.color.rgb = RGBColor(0, 77, 64)
     run.font.name = 'Calibri'
     
-    # Divider line
-    divider = doc.add_paragraph()
-    divider.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    divider.space_before = Pt(4)
-    divider.space_after = Pt(4)
-    run = divider.add_run('━' * 40)
+    # Gold divider
+    div_para = doc.add_paragraph()
+    div_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    div_para.space_before = Pt(8)
+    div_para.space_after = Pt(8)
+    run = div_para.add_run('\u2500' * 30)
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    
+    # Prepared for
+    meta_para = doc.add_paragraph()
+    meta_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    meta_para.space_after = Pt(2)
+    run = meta_para.add_run('Prepared for')
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+    run.font.name = 'Calibri'
+    
+    client_para = doc.add_paragraph()
+    client_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    client_para.space_after = Pt(16)
+    run = client_para.add_run(req.client_name or 'Organization')
+    run.font.size = Pt(16)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(30, 30, 30)
+    run.font.name = 'Calibri'
+    
+    # Details table (centered info block)
+    doc.add_paragraph().space_after = Pt(4)
+    info_tbl = doc.add_table(rows=3, cols=2)
+    info_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    info_data = [
+        ('Date:', date_str),
+        ('Document Type:', f'{req.tone} RFP'),
+        ('Sections:', f'{len(req.sections)} sections'),
+    ]
+    for row_idx, (label, value) in enumerate(info_data):
+        info_tbl.cell(row_idx, 0).width = Cm(4)
+        info_tbl.cell(row_idx, 1).width = Cm(8)
+        label_para = info_tbl.cell(row_idx, 0).paragraphs[0]
+        label_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = label_para.add_run(label)
+        run.font.size = Pt(10)
+        run.font.color.rgb = RGBColor(120, 120, 120)
+        run.font.bold = True
+        val_para = info_tbl.cell(row_idx, 1).paragraphs[0]
+        run = val_para.add_run(f'  {value}')
+        run.font.size = Pt(10)
+        run.font.color.rgb = RGBColor(55, 65, 81)
+    # Remove table borders
+    for row in info_tbl.rows:
+        for cell in row.cells:
+            tc = cell._element
+            tcPr = tc.get_or_add_tcPr()
+            tcBorders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>')
+            tcPr.append(tcBorders)
+    
+    # Bottom bar
+    for _ in range(4):
+        p = doc.add_paragraph()
+        p.space_after = Pt(0)
+    
+    bot_tbl = doc.add_table(rows=1, cols=1)
+    bot_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    bot_cell = bot_tbl.cell(0, 0)
+    shading2 = parse_xml(f'<w:shd {nsdecls("w")} w:fill="004D40"/>')
+    bot_cell.paragraphs[0]._element.get_or_add_pPr().append(shading2)
+    bot_para = bot_cell.paragraphs[0]
+    bot_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    bot_para.space_before = Pt(8)
+    bot_para.space_after = Pt(8)
+    run = bot_para.add_run('CONFIDENTIAL')
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    run.font.bold = True
+    run.font.letter_spacing = Pt(2)
+    
+    # ═══════════ TABLE OF CONTENTS ═══════════
+    doc.add_page_break()
+    
+    toc_title = doc.add_heading('Table of Contents', level=2)
+    for run in toc_title.runs:
+        run.font.color.rgb = RGBColor(0, 77, 64)
+        run.font.size = Pt(20)
+    
+    # Divider below TOC title
+    toc_div = doc.add_paragraph()
+    toc_div.space_after = Pt(12)
+    run = toc_div.add_run('\u2500' * 50)
     run.font.size = Pt(8)
     run.font.color.rgb = RGBColor(200, 168, 107)
     
-    # Meta info
-    meta = doc.add_paragraph()
-    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    meta.space_after = Pt(4)
-    run = meta.add_run(f'Prepared for: ')
-    run.font.size = Pt(11)
-    run.font.color.rgb = RGBColor(100, 100, 100)
-    run = meta.add_run(req.client_name or 'Organization')
-    run.font.size = Pt(11)
-    run.font.bold = True
-    run.font.color.rgb = RGBColor(51, 51, 51)
-    
-    date_para = doc.add_paragraph()
-    date_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    date_para.space_after = Pt(2)
-    run = date_para.add_run(f'{date_str}  ·  {req.tone} Tone')
-    run.font.size = Pt(10)
-    run.font.color.rgb = RGBColor(148, 163, 184)
-    
-    # Sources
-    if req.source_names:
-        src_para = doc.add_paragraph()
-        src_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        src_para.space_after = Pt(12)
-        run = src_para.add_run('Sources: ')
-        run.font.size = Pt(9)
-        run.font.color.rgb = RGBColor(100, 100, 100)
-        run = src_para.add_run(' | '.join(req.source_names))
-        run.font.size = Pt(9)
-        run.font.color.rgb = RGBColor(124, 58, 237)
-    
-    # Page break before sections
-    doc.add_page_break()
-    
-    # Table of Contents header
-    toc_heading = doc.add_heading('Table of Contents', level=1)
-    for run in toc_heading.runs:
+    # TOC entries as a table (number | title | dots)
+    toc_tbl = doc.add_table(rows=len(req.sections), cols=2)
+    toc_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    for i, sec in enumerate(req.sections):
+        # Number cell
+        num_cell = toc_tbl.cell(i, 0)
+        num_cell.width = Cm(1.5)
+        num_para = num_cell.paragraphs[0]
+        num_para.space_before = Pt(4)
+        num_para.space_after = Pt(4)
+        run = num_para.add_run(f'{i + 1}.')
+        run.font.size = Pt(12)
+        run.font.bold = True
         run.font.color.rgb = RGBColor(0, 77, 64)
-        run.font.size = Pt(18)
+        # Title cell
+        title_cell = toc_tbl.cell(i, 1)
+        title_cell.width = Cm(12)
+        title_para = title_cell.paragraphs[0]
+        title_para.space_before = Pt(4)
+        title_para.space_after = Pt(4)
+        run = title_para.add_run(sec.get("section", "Section"))
+        run.font.size = Pt(12)
+        run.font.color.rgb = RGBColor(55, 65, 81)
+    # Remove table borders
+    for row in toc_tbl.rows:
+        for cell in row.cells:
+            tc = cell._element
+            tcPr = tc.get_or_add_tcPr()
+            tcBorders = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>')
+            tcPr.append(tcBorders)
+    # Add row bottom borders only
+    for row in toc_tbl.rows:
+        for cell in row.cells:
+            tc = cell._element
+            tcPr = tc.get_or_add_tcPr()
+            bottom_border = parse_xml(f'<w:tcBorders {nsdecls("w")}><w:bottom w:val="single" w:sz="4" w:color="E5E7EB"/></w:tcBorders>')
+            tcPr.append(bottom_border)
     
+    # ═══════════ SECTIONS ═══════════
     for i, sec in enumerate(req.sections):
-        toc_para = doc.add_paragraph()
-        toc_para.space_after = Pt(3)
-        run = toc_para.add_run(f'{i + 1}.  {sec.get("section", "Section")}')
-        run.font.size = Pt(11)
-        run.font.color.rgb = RGBColor(51, 51, 51)
-    
-    doc.add_page_break()
-    
-    # Sections
-    for i, sec in enumerate(req.sections):
-        # Section heading
-        heading = doc.add_heading(f'{i + 1}. {sec.get("section", "Section")}', level=1)
-        heading.space_before = Pt(18)
+        doc.add_page_break()
+        
+        # Section heading using Heading 1 style (will appear in Word's built-in TOC)
+        heading = doc.add_heading(f'{sec.get("section", "Section")}', level=1)
+        heading.space_before = Pt(0)
         for run in heading.runs:
             run.font.color.rgb = RGBColor(0, 77, 64)
-            run.font.size = Pt(16)
+            run.font.size = Pt(18)
             run.font.name = 'Calibri'
         
-        # Section content
-        content = sec.get('content', '')
+        # Section number bar
+        num_bar = doc.add_paragraph()
+        num_bar.space_after = Pt(12)
+        run = num_bar.add_run(f'Section {i + 1} of {len(req.sections)}')
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(148, 163, 184)
+        run.font.italic = True
+        
+        # Accent line under heading
+        accent_line = doc.add_paragraph()
+        accent_line.space_after = Pt(12)
+        run = accent_line.add_run('\u2500' * 50)
+        run.font.size = Pt(6)
+        run.font.color.rgb = RGBColor(0, 77, 64)
+        
+        # Section content — strip all citations
+        content = _strip_citations(sec.get('content', ''))
         paragraphs = content.split('\n\n')
         
         for para_text in paragraphs:
             para_text = para_text.strip()
             if not para_text:
                 continue
-            
             para = doc.add_paragraph()
             para.space_after = Pt(8)
-            para.paragraph_format.first_line_indent = Cm(0)
-            
-            # Split by citations and render them differently
-            parts = re.split(r'(\[Source:[^\]]+\])', para_text)
-            for part in parts:
-                if part.startswith('[Source:'):
-                    run = para.add_run(part)
-                    run.font.size = Pt(9)
-                    run.font.color.rgb = RGBColor(124, 58, 237)
-                    run.font.italic = True
-                else:
-                    run = para.add_run(part)
-                    run.font.size = Pt(11)
-                    run.font.color.rgb = RGBColor(55, 65, 81)
+            para.paragraph_format.line_spacing = 1.3
+            run = para.add_run(para_text)
+            run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(55, 65, 81)
+            run.font.name = 'Calibri'
     
-    # Footer
-    footer_para = doc.add_paragraph()
-    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer_para.space_before = Pt(24)
-    run = footer_para.add_run('━' * 40)
+    # ═══════════ FOOTER PAGE ═══════════
+    doc.add_page_break()
+    for _ in range(6):
+        p = doc.add_paragraph()
+        p.space_after = Pt(0)
+    
+    end_para = doc.add_paragraph()
+    end_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = end_para.add_run('End of Document')
+    run.font.size = Pt(14)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+    run.font.italic = True
+    
+    end_div = doc.add_paragraph()
+    end_div.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    end_div.space_before = Pt(8)
+    run = end_div.add_run('\u2500' * 30)
     run.font.size = Pt(8)
     run.font.color.rgb = RGBColor(200, 168, 107)
     
-    footer = doc.add_paragraph()
-    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = footer.add_run('Generated by HealthOS  ·  AI-Powered Research Assistant')
+    gen_para = doc.add_paragraph()
+    gen_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    gen_para.space_before = Pt(8)
+    run = gen_para.add_run('Generated by HealthOS  |  AI-Powered Research Assistant')
     run.font.size = Pt(9)
     run.font.color.rgb = RGBColor(148, 163, 184)
     
@@ -1570,123 +1712,202 @@ def _export_pdf(req: RFPExportRequest, date_str: str):
     from fpdf import FPDF
     import re
     
+    TEAL = (0, 77, 64)
+    GOLD = (200, 168, 107)
+    DARK = (30, 31, 54)
+    GRAY = (55, 65, 81)
+    LIGHT = (148, 163, 184)
+    WHITE = (255, 255, 255)
+    
     class RFPPDF(FPDF):
         def header(self):
-            if self.page_no() > 1:
-                self.set_font('Helvetica', 'I', 8)
-                self.set_text_color(148, 163, 184)
-                self.cell(0, 8, f'{self.project_name} - RFP', align='L')
-                self.cell(0, 8, f'Page {self.page_no()}', align='R', new_x="LMARGIN", new_y="NEXT")
-                self.set_draw_color(200, 168, 107)
-                self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-                self.ln(4)
+            if self.page_no() > 2:  # Skip header on title + TOC pages
+                self.set_font('Helvetica', 'B', 8)
+                self.set_text_color(*TEAL)
+                self.cell(0, 6, self.project_name, align='L')
+                self.set_font('Helvetica', '', 8)
+                self.set_text_color(*LIGHT)
+                self.cell(0, 6, f'Page {self.page_no()}', align='R', new_x="LMARGIN", new_y="NEXT")
+                self.set_draw_color(*GOLD)
+                self.set_line_width(0.4)
+                self.line(self.l_margin, self.get_y() + 1, self.w - self.r_margin, self.get_y() + 1)
+                self.ln(6)
         
         def footer(self):
-            self.set_y(-15)
-            self.set_font('Helvetica', 'I', 8)
-            self.set_text_color(148, 163, 184)
-            self.cell(0, 10, 'Generated by HealthOS  |  AI-Powered Research Assistant', align='C')
+            self.set_y(-12)
+            self.set_draw_color(*GOLD)
+            self.set_line_width(0.3)
+            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+            self.ln(2)
+            self.set_font('Helvetica', '', 7)
+            self.set_text_color(*LIGHT)
+            self.cell(0, 6, f'{self.project_name}  |  Confidential  |  {self.date_str}', align='C')
     
     pdf = RFPPDF()
     pdf.project_name = req.project_name or 'Project'
-    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.date_str = date_str
+    pdf.set_auto_page_break(auto=True, margin=18)
     pdf.set_margins(25, 20, 25)
+    pw = pdf.w - 50  # printable width
     
-    # Title page
+    # ═══════════ TITLE PAGE ═══════════
     pdf.add_page()
-    pdf.ln(40)
     
-    # "REQUEST FOR PROPOSAL"
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(249, 115, 22)
-    pdf.cell(0, 8, 'REQUEST FOR PROPOSAL', align='C', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(6)
+    # Top teal banner
+    pdf.set_fill_color(*TEAL)
+    pdf.rect(0, 0, pdf.w, 10, 'F')
+    # Gold accent line below banner
+    pdf.set_fill_color(*GOLD)
+    pdf.rect(0, 10, pdf.w, 2, 'F')
     
-    # Project name
-    pdf.set_font('Helvetica', 'B', 28)
-    pdf.set_text_color(0, 77, 64)
-    pdf.multi_cell(0, 12, req.project_name or 'Project', align='C')
-    pdf.ln(4)
+    pdf.ln(55)
     
-    # Divider
-    pdf.set_draw_color(200, 168, 107)
-    pdf.set_line_width(0.5)
-    cx = pdf.w / 2
-    pdf.line(cx - 30, pdf.get_y(), cx + 30, pdf.get_y())
+    # "REQUEST FOR PROPOSAL" label
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(*GOLD)
+    pdf.cell(0, 7, 'REQUEST FOR PROPOSAL', align='C', new_x="LMARGIN", new_y="NEXT")
     pdf.ln(8)
     
-    # Meta
-    pdf.set_font('Helvetica', '', 11)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, f'Prepared for: ', align='C', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(51, 51, 51)
-    pdf.cell(0, 8, req.client_name or 'Organization', align='C', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(2)
+    # Project name
+    pdf.set_font('Helvetica', 'B', 30)
+    pdf.set_text_color(*TEAL)
+    pdf.multi_cell(0, 13, req.project_name or 'Project', align='C')
+    pdf.ln(6)
+    
+    # Gold divider
+    cx = pdf.w / 2
+    pdf.set_draw_color(*GOLD)
+    pdf.set_line_width(1)
+    pdf.line(cx - 35, pdf.get_y(), cx + 35, pdf.get_y())
+    pdf.ln(12)
+    
+    # "Prepared for"
     pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(148, 163, 184)
-    pdf.cell(0, 6, f'{date_str}  |  {req.tone} Tone', align='C', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(6)
-    
-    # Sources
-    if req.source_names:
-        pdf.set_font('Helvetica', 'I', 9)
-        pdf.set_text_color(124, 58, 237)
-        src_text = 'Sources: ' + ' | '.join(req.source_names)
-        pdf.multi_cell(0, 5, src_text, align='C')
-    
-    # Table of Contents
-    pdf.add_page()
+    pdf.set_text_color(*LIGHT)
+    pdf.cell(0, 6, 'Prepared for', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
     pdf.set_font('Helvetica', 'B', 18)
-    pdf.set_text_color(0, 77, 64)
-    pdf.cell(0, 12, 'Table of Contents', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(4)
-    pdf.set_draw_color(200, 168, 107)
-    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 50, pdf.get_y())
-    pdf.ln(6)
+    pdf.set_text_color(*DARK)
+    pdf.cell(0, 10, req.client_name or 'Organization', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(16)
     
+    # Details box
+    box_x = pdf.w / 2 - 45
+    box_y = pdf.get_y()
+    pdf.set_draw_color(220, 220, 220)
+    pdf.set_line_width(0.3)
+    pdf.rect(box_x, box_y, 90, 40, 'D')
+    # Teal top edge on box
+    pdf.set_fill_color(*TEAL)
+    pdf.rect(box_x, box_y, 90, 2, 'F')
+    
+    pdf.set_y(box_y + 6)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(*LIGHT)
+    pdf.cell(0, 5, 'Date', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(*GRAY)
+    pdf.cell(0, 6, date_str, align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(*LIGHT)
+    pdf.cell(0, 5, f'Document Type: {req.tone} RFP  |  {len(req.sections)} Sections', align='C', new_x="LMARGIN", new_y="NEXT")
+    
+    # Bottom teal banner
+    pdf.set_fill_color(*TEAL)
+    pdf.rect(0, pdf.h - 12, pdf.w, 10, 'F')
+    pdf.set_fill_color(*GOLD)
+    pdf.rect(0, pdf.h - 14, pdf.w, 2, 'F')
+    pdf.set_y(pdf.h - 11)
+    pdf.set_font('Helvetica', 'B', 7)
+    pdf.set_text_color(*GOLD)
+    pdf.cell(0, 8, 'CONFIDENTIAL', align='C')
+    
+    # ═══════════ TABLE OF CONTENTS ═══════════
+    pdf.add_page()
+    
+    # TOC header
+    pdf.set_font('Helvetica', 'B', 22)
+    pdf.set_text_color(*TEAL)
+    pdf.cell(0, 14, 'Table of Contents', new_x="LMARGIN", new_y="NEXT")
+    
+    # Gold underline
+    pdf.set_draw_color(*GOLD)
+    pdf.set_line_width(1)
+    pdf.line(pdf.l_margin, pdf.get_y() + 2, pdf.l_margin + 60, pdf.get_y() + 2)
+    pdf.ln(10)
+    
+    # TOC entries with alternating background
     for i, sec in enumerate(req.sections):
+        y = pdf.get_y()
+        if i % 2 == 0:
+            pdf.set_fill_color(244, 246, 251)
+            pdf.rect(pdf.l_margin, y, pw, 10, 'F')
+        
+        # Section number (teal bold)
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(*TEAL)
+        pdf.set_xy(pdf.l_margin + 4, y)
+        pdf.cell(12, 10, f'{i + 1}.')
+        
+        # Section title
         pdf.set_font('Helvetica', '', 11)
-        pdf.set_text_color(51, 51, 51)
-        pdf.cell(0, 7, f'  {i + 1}.  {sec.get("section", "Section")}', new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(*GRAY)
+        pdf.set_xy(pdf.l_margin + 18, y)
+        pdf.cell(pw - 18, 10, sec.get("section", "Section"), new_x="LMARGIN", new_y="NEXT")
     
-    # Sections
+    # ═══════════ SECTIONS ═══════════
     for i, sec in enumerate(req.sections):
         pdf.add_page()
         
-        # Section number + title
-        pdf.set_font('Helvetica', 'B', 16)
-        pdf.set_text_color(0, 77, 64)
-        title = f'{i + 1}. {sec.get("section", "Section")}'
-        pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT")
+        # Section header with teal background
+        header_y = pdf.get_y()
+        pdf.set_fill_color(*TEAL)
+        pdf.rect(pdf.l_margin, header_y, pw, 18, 'F')
+        # Gold accent
+        pdf.set_fill_color(*GOLD)
+        pdf.rect(pdf.l_margin, header_y, 4, 18, 'F')
         
-        # Underline
-        pdf.set_draw_color(0, 77, 64)
-        pdf.set_line_width(0.8)
-        pdf.line(pdf.l_margin, pdf.get_y() + 1, pdf.l_margin + pdf.get_string_width(title), pdf.get_y() + 1)
-        pdf.ln(8)
+        # Section number + title (white on teal)
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_text_color(*WHITE)
+        pdf.set_xy(pdf.l_margin + 10, header_y + 2)
+        pdf.cell(pw - 10, 14, f'{i + 1}.  {sec.get("section", "Section")}')
         
-        # Content
-        content = sec.get('content', '')
+        pdf.set_y(header_y + 22)
+        
+        # Section subtitle
+        pdf.set_font('Helvetica', 'I', 8)
+        pdf.set_text_color(*LIGHT)
+        pdf.cell(0, 5, f'Section {i + 1} of {len(req.sections)}', new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(4)
+        
+        # Content — strip all citations
+        content = _strip_citations(sec.get('content', ''))
         paragraphs = content.split('\n\n')
         
         for para_text in paragraphs:
             para_text = para_text.strip()
             if not para_text:
                 continue
-            
-            # Split by citations
-            parts = re.split(r'(\[Source:[^\]]+\])', para_text)
-            for part in parts:
-                if part.startswith('[Source:'):
-                    pdf.set_font('Helvetica', 'I', 9)
-                    pdf.set_text_color(124, 58, 237)
-                    pdf.write(5.5, part)
-                else:
-                    pdf.set_font('Helvetica', '', 11)
-                    pdf.set_text_color(55, 65, 81)
-                    pdf.write(5.5, part)
-            pdf.ln(8)
+            pdf.set_font('Helvetica', '', 10.5)
+            pdf.set_text_color(*GRAY)
+            pdf.multi_cell(pw, 5.5, para_text, align='J')
+            pdf.ln(4)
+    
+    # ═══════════ END PAGE ═══════════
+    pdf.add_page()
+    pdf.ln(60)
+    pdf.set_font('Helvetica', 'I', 14)
+    pdf.set_text_color(*LIGHT)
+    pdf.cell(0, 10, 'End of Document', align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+    pdf.set_draw_color(*GOLD)
+    pdf.set_line_width(0.8)
+    pdf.line(cx - 25, pdf.get_y(), cx + 25, pdf.get_y())
+    pdf.ln(8)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.cell(0, 6, 'Generated by HealthOS  |  AI-Powered Research Assistant', align='C')
     
     # Save to buffer
     buf = io.BytesIO()
