@@ -1320,8 +1320,8 @@ Only output the JSON array."""
 
 @api_router.post("/rfp/generate")
 async def generate_rfp(req: RFPGenerateRequest):
-    """Generate a filled RFP using template sections + knowledge base sources"""
-    # Get all indexed sources
+    """Generate RFP content for a small batch of sections"""
+    import json
     sources_cursor = db.sources.find(
         {"notebook_id": req.notebook_id, "status": "indexed"},
         {"_id": 0, "title": 1, "content": 1}
@@ -1329,88 +1329,49 @@ async def generate_rfp(req: RFPGenerateRequest):
     sources = await sources_cursor.to_list(50)
     
     if not sources:
-        raise HTTPException(status_code=400, detail="No indexed sources found. Please add sources first.")
+        raise HTTPException(status_code=400, detail="No indexed sources found.")
     
-    # Combine source content (limit to 12000 chars)
     combined = ""
     source_names = []
     for s in sources:
         source_names.append(s['title'])
-        combined += f"\n\n--- Source: {s['title']} ---\n{s['content'][:4000]}"
-    combined = combined[:12000]
+        combined += f"\n\n[{s['title']}]:\n{s['content'][:2000]}"
+    combined = combined[:5000]
     
-    # Tone instructions
-    tone_map = {
-        "Formal": "Use formal, bureaucratic language appropriate for government or enterprise RFPs. Professional and precise.",
-        "Technical": "Use technical language with specifications, requirements, and detailed technical criteria. Include technical terms.",
-        "Executive": "Use high-level business language focused on strategic outcomes, ROI, and executive decision-making.",
-        "Proposal-style": "Use persuasive, benefits-focused language that sells the project vision and emphasizes value."
-    }
-    tone_instruction = tone_map.get(req.tone, tone_map["Formal"])
-    
+    tone_map = {"Formal": "formal bureaucratic", "Technical": "technical specifications", "Executive": "executive strategic", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
     
-    prompt = f"""You are an expert RFP writer. Generate a complete, professional RFP document.
+    prompt = f"""You are an RFP writer. Write professional content for these RFP sections:
 
-PROJECT NAME: {req.project_name or 'Unnamed Project'}
-CLIENT/ORGANIZATION: {req.client_name or 'Organization'}
-TONE: {req.tone} — {tone_instruction}
-{f'ADDITIONAL INSTRUCTIONS: {req.additional_context}' if req.additional_context else ''}
-
-KNOWLEDGE BASE SOURCES: {', '.join(source_names)}
-
-SOURCE CONTENT:
-{combined}
-
-RFP SECTIONS TO FILL:
 {sections_list}
 
-For EACH section listed above, write 2-4 paragraphs of professional RFP content that:
-1. Draws directly from the source material provided
-2. Uses the specified tone consistently
-3. Includes inline citations like [Source: {{source_title}} · §relevant_area]
-4. Is specific, actionable, and reads like a real RFP — not generic filler
-5. References the project name and client name naturally
+Project: {req.project_name or 'Project'}
+Client: {req.client_name or 'Organization'}
+Tone: {tone_map.get(req.tone, 'formal')}
+{f'Instructions: {req.additional_context}' if req.additional_context else ''}
 
-Format your response as a JSON array:
-[
-  {{
-    "section": "Section Title",
-    "content": "Full multi-paragraph content for this section with [Source: Name · §Section] citations inline."
-  }}
-]
+Knowledge base:
+{combined}
 
 RULES:
-- Fill EVERY section listed. Do not skip any.
-- Each section must have 2-4 substantial paragraphs
-- Include at least one citation per section
-- Content must be grounded in the actual source material
-- Only output the JSON array, no other text."""
+- For each section write 2 substantial paragraphs (each 3-4 sentences)
+- Include inline citations: [Source: source_name · §relevant_area]
+- Content must reference actual source material
+- Use the project and client names
 
-    response = await generate_with_ai(prompt, f"You are a senior RFP specialist writing in {req.tone} tone.")
+Return JSON array only:
+[{{"section": "Section Title", "content": "Paragraph 1...\\n\\nParagraph 2..."}}]"""
+
+    response = await generate_with_ai(prompt, f"Expert RFP writer. {req.tone} tone. Professional.")
     
-    import json
     try:
         clean = response.strip()
         if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
         rfp_sections = json.loads(clean)
     except:
-        # Fallback: return raw text split by sections
-        rfp_sections = [{"section": s, "content": f"Content generation pending for: {s}"} for s in req.template_sections]
+        rfp_sections = [{"section": s, "content": f"Content for {s}."} for s in req.template_sections]
     
-    # Build full document text
-    full_text = f"REQUEST FOR PROPOSAL\n{req.project_name or 'Project'}\nPrepared for: {req.client_name or 'Organization'}\nDate: {datetime.now().strftime('%B %d, %Y')}\n\n{'='*60}\n\n"
-    for sec in rfp_sections:
-        full_text += f"\n{'='*60}\n{sec['section'].upper()}\n{'='*60}\n\n{sec['content']}\n\n"
-    
-    return {
-        "sections": rfp_sections,
-        "full_text": full_text,
-        "project_name": req.project_name,
-        "client_name": req.client_name,
-        "tone": req.tone,
-        "source_names": source_names
-    }
+    return {"sections": rfp_sections, "source_names": source_names}
 
 # Include the router in the main app
 app.include_router(api_router)

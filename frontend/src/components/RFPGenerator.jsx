@@ -107,28 +107,60 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
     setStep(3);
     setProgressIdx(0);
 
-    // Animate progress steps
-    for (let i = 0; i < PROGRESS_STEPS.length; i++) {
-      await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
-      setProgressIdx(i + 1);
-    }
-
     try {
-      const res = await fetch(`${API_URL}/api/rfp/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template_sections: templateSections,
-          project_name: projectName,
-          client_name: clientName,
-          tone,
-          additional_context: additionalCtx,
-          notebook_id: 'default'
-        })
+      // Batch sections into groups of 2 to stay under gateway timeout
+      const batchSize = 2;
+      const batches = [];
+      for (let i = 0; i < templateSections.length; i += batchSize) {
+        batches.push(templateSections.slice(i, i + batchSize));
+      }
+
+      const allSections = [];
+      let sourceNames = [];
+      const stepsPerBatch = Math.floor(PROGRESS_STEPS.length / batches.length);
+
+      for (let bi = 0; bi < batches.length; bi++) {
+        // Update progress
+        const stepIdx = Math.min(bi * stepsPerBatch + 1, PROGRESS_STEPS.length - 1);
+        setProgressIdx(stepIdx);
+
+        const res = await fetch(`${API_URL}/api/rfp/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            template_sections: batches[bi],
+            project_name: projectName,
+            client_name: clientName,
+            tone,
+            additional_context: additionalCtx,
+            notebook_id: 'default'
+          })
+        });
+        if (!res.ok) throw new Error(`Batch ${bi + 1} failed`);
+        const data = await res.json();
+        allSections.push(...(data.sections || []));
+        if (data.source_names) sourceNames = data.source_names;
+      }
+
+      // Final progress
+      setProgressIdx(PROGRESS_STEPS.length);
+      await new Promise(r => setTimeout(r, 400));
+
+      // Build full text
+      const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      let fullText = `REQUEST FOR PROPOSAL\n${projectName || 'Project'}\nPrepared for: ${clientName || 'Organization'}\nDate: ${date}\n\n${'='.repeat(60)}\n\n`;
+      for (const sec of allSections) {
+        fullText += `\n${'='.repeat(60)}\n${sec.section.toUpperCase()}\n${'='.repeat(60)}\n\n${sec.content}\n\n`;
+      }
+
+      setRfpResult({
+        sections: allSections,
+        full_text: fullText,
+        project_name: projectName,
+        client_name: clientName,
+        tone,
+        source_names: sourceNames
       });
-      if (!res.ok) throw new Error('Generation failed');
-      const data = await res.json();
-      setRfpResult(data);
       setStep(4);
       toast("RFP generated successfully!");
     } catch (e) {

@@ -32,6 +32,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - **Mar 15, S6**: Infographic AI images — extracted renderer to utility, generates 6 contextual images per infographic
 - **Mar 17, S7**: Visual Report overhaul — reduced text (5 sections, 2 bullets max, 8 words), added stat highlights, workflow diagrams, image-first layout
 - **Mar 17, S8**: Infographic overhaul — S-curve flowing layout with dark bg, alternating left/right sections, large AI images (480x260), central numbered path nodes, decorative shapes, workflow pill diagrams, stat badges, no empty white space. Reduced text to 2 bullets x 8 words max.
+- **Mar 17, S9**: RFP Generator feature — new Studio card, 4-step wizard (upload template → configure → loading → preview), batched AI generation (2 sections per call), template parsing (PDF/DOCX/TXT), sample template fallback, Export/Copy/Save/Regen/Print, inline citation pills, EN/AR translations.
 
 ## Backlog
 - P2: Visual slide preview in output modal
