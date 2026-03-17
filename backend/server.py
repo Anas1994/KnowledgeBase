@@ -645,45 +645,54 @@ Only output the JSON array, no other text."""
 async def generate_report(content: str, sources: List[str], title: str) -> GenerateResponse:
     """Generate a visual research report with structured sections"""
     
-    prompt = f"""Based on the following research content from {len(sources)} sources, create a visual research report.
+    prompt = f"""Based on the following research content from {len(sources)} sources, create a HIGHLY VISUAL research report. This report will be rendered as an infographic-style visual — prioritize images, workflows, and key stats over text.
 
 SOURCES: {', '.join(sources)}
 
 CONTENT:
 {content}
 
-Create a report with 6-8 sections. Each section should be CONCISE — use bullet points, not paragraphs.
+Create a report with exactly 5 sections. Each section is IMAGE-FIRST with minimal text.
 
 For each section provide:
-1. title: A clear section heading (max 6 words)
-2. bullets: 3-4 SHORT bullet points (max 15 words each) — key findings only, no filler text
-3. imageKeyword: A 2-4 word phrase for AI image generation that visually represents this section (e.g., "patient monitoring dashboard", "clinical team collaboration")
-4. visualType: "workflow" if the section describes a process/flow with sequential steps, "none" otherwise
-5. workflowSteps: Only if visualType is "workflow" — list of 3-5 short step labels (max 5 words each)
-6. icon: from chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
+1. title: Section heading (max 5 words)
+2. subtitle: A single-sentence takeaway (max 10 words)
+3. bullets: ONLY 2 short bullet points (max 8 words each) — key data only
+4. stat: A key number/percentage from the content for this section (e.g., "85%", "24/7", "4 Phases", "3x Faster"). If no real stat, use "".
+5. statLabel: Short label for the stat (max 4 words)
+6. imageKeyword: Specific 3-5 word phrase for AI image (e.g., "remote patient monitoring dashboard", "clinical team hospital ward")
+7. visualType: Choose the BEST visual for this section:
+   - "workflow" — for processes with sequential steps (use for 2-3 sections)
+   - "stat" — for sections with a strong numeric highlight (use for 1-2 sections)
+   - "none" — only if no visual fits
+8. workflowSteps: If visualType is "workflow", list 3-5 short step labels (max 4 words each)
+9. icon: from chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
 
 Format as JSON array:
 [
   {{
     "sectionNumber": 1,
     "title": "Section Title",
-    "bullets": ["Key point 1", "Key point 2", "Key point 3"],
-    "imageKeyword": "relevant visual concept",
-    "visualType": "none",
-    "workflowSteps": [],
+    "subtitle": "One line takeaway here",
+    "bullets": ["Point one here", "Point two here"],
+    "stat": "85%",
+    "statLabel": "Coverage Rate",
+    "imageKeyword": "specific visual concept here",
+    "visualType": "workflow",
+    "workflowSteps": ["Step One", "Step Two", "Step Three"],
     "icon": "chart"
   }}
 ]
 
 RULES:
-- Keep bullets SHORT and data-driven. No long sentences.
-- First section should be an Executive Summary
-- Last section should be Recommendations or Next Steps
-- Use "workflow" type for 1-2 sections that describe processes
-- Every section must have a specific imageKeyword
+- MINIMAL TEXT. 2 bullets max per section, 8 words max each.
+- At least 2 sections MUST have visualType "workflow"
+- At least 1 section MUST have visualType "stat" with a real number
+- Every section MUST have a specific imageKeyword
+- subtitle is required for every section
 - Only output the JSON array, no other text."""
 
-    response = await generate_with_ai(prompt, "You are an expert research analyst. Create concise, visual report structures.")
+    response = await generate_with_ai(prompt, "You are a visual report designer. Create image-heavy, minimal-text report structures.")
     
     # Parse JSON
     try:
@@ -693,7 +702,11 @@ RULES:
         report_sections = json.loads(clean)
         for sec in report_sections:
             sec.setdefault('title', 'Section')
+            sec.setdefault('subtitle', '')
             sec.setdefault('bullets', [])
+            sec['bullets'] = sec['bullets'][:2]  # Hard cap at 2 bullets
+            sec.setdefault('stat', '')
+            sec.setdefault('statLabel', '')
             sec.setdefault('imageKeyword', sec.get('title', ''))
             sec.setdefault('visualType', 'none')
             sec.setdefault('workflowSteps', [])
@@ -704,11 +717,15 @@ RULES:
             {"sectionNumber": 1, "title": title, "bullets": ["Report generated from source documents"], "imageKeyword": "research analysis", "visualType": "none", "workflowSteps": [], "icon": "chart"}
         ]
     
-    # Also generate a text summary for the content field
-    text_content = f"RESEARCH REPORT: {title}\nGenerated: {datetime.now().strftime('%B %d, %Y')}\nSources: {len(sources)} documents\n\n"
+    # Generate minimal text summary for preview
+    text_content = f"VISUAL REPORT: {title}\nGenerated: {datetime.now().strftime('%B %d, %Y')}\nSources: {len(sources)} documents\n\n"
     for sec in report_sections:
         text_content += f"## {sec['title']}\n"
-        for b in sec.get('bullets', []):
+        if sec.get('subtitle'):
+            text_content += f"{sec['subtitle']}\n"
+        if sec.get('stat'):
+            text_content += f"[{sec['stat']}] {sec.get('statLabel', '')}\n"
+        for b in sec.get('bullets', [])[:2]:
             text_content += f"- {b}\n"
         text_content += "\n"
     
