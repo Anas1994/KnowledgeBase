@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLanguage } from "../i18n/LanguageContext";
 import { useTheme } from "../theme/ThemeContext";
 import { renderInfographicWithImages } from "../utils/infographicRenderer";
+import { renderVisualReport } from "../utils/reportRenderer";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -1396,6 +1397,17 @@ export default function HealthOS() {
       } catch (e) {
         console.error('PPTX generation error:', e);
         toast(`PPTX export failed: ${e.message || 'Unknown error'}. Try again.`, "error");
+      }
+    }
+    
+    // For report with structured data, generate visual report PNG
+    if (out.type === "report" && out.slides_data && out.slides_data.length > 0) {
+      try {
+        await renderVisualReport(out, API_URL, toast);
+        return;
+      } catch (e) {
+        console.error('Report render error:', e);
+        toast(`Visual report failed: ${e.message || 'Unknown error'}`, "error");
       }
     }
     

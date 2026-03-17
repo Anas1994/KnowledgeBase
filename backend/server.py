@@ -515,6 +515,21 @@ async def generate_output(request: GenerateRequest):
     else:
         raise HTTPException(status_code=400, detail=f"Unknown output type: {request.output_type}")
 
+def detect_theme(content: str) -> str:
+    """Detect appropriate theme from content"""
+    content_lower = content.lower()
+    health_kw = ['health', 'medical', 'clinical', 'patient', 'hospital', 'care', 'pharma', 'therapy']
+    if any(k in content_lower for k in health_kw):
+        return 'health'
+    tech_kw = ['software', 'platform', 'api', 'cloud', 'data', 'algorithm', 'ai', 'machine learning']
+    if any(k in content_lower for k in tech_kw):
+        return 'tech'
+    finance_kw = ['finance', 'revenue', 'budget', 'investment', 'cost', 'profit']
+    if any(k in content_lower for k in finance_kw):
+        return 'finance'
+    return 'corporate'
+
+
 async def generate_slides(content: str, sources: List[str], title: str) -> GenerateResponse:
     """Generate PowerPoint slide content using AI with rich formatting"""
     
@@ -595,20 +610,8 @@ Only output the JSON array, no other text."""
             {"slideNumber": 2, "title": "Key Findings", "bullets": ["Analysis in progress", "See full content below"], "notes": response[:500], "layout": "bullets", "imageKeyword": "analysis", "icon": "chart"}
         ]
     
-    # Determine theme based on content keywords (health checked first for priority)
-    content_lower = content.lower()
-    if any(word in content_lower for word in ['health', 'medical', 'patient', 'care', 'hospital', 'clinic', 'healthcare']):
-        theme = 'health'
-    elif any(word in content_lower for word in ['tech', 'software', 'code', 'development', 'app', 'digital']):
-        theme = 'tech'
-    elif any(word in content_lower for word in ['finance', 'money', 'budget', 'cost', 'revenue', 'profit']):
-        theme = 'finance'
-    elif any(word in content_lower for word in ['education', 'learn', 'student', 'school', 'training']):
-        theme = 'education'
-    elif any(word in content_lower for word in ['home', 'house', 'smart', 'automation', 'iot']):
-        theme = 'smart_home'
-    else:
-        theme = 'corporate'
+    # Determine theme
+    theme = detect_theme(content)
     
     # NOTE: Image generation is disabled to avoid gateway timeout (60s limit)
     # The presentation will be generated with placeholder icons instead
@@ -640,49 +643,82 @@ Only output the JSON array, no other text."""
     )
 
 async def generate_report(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate a structured research report"""
+    """Generate a visual research report with structured sections"""
     
-    prompt = f"""Based on the following research content from {len(sources)} sources, create a comprehensive research report.
+    prompt = f"""Based on the following research content from {len(sources)} sources, create a visual research report.
 
 SOURCES: {', '.join(sources)}
 
 CONTENT:
 {content}
 
-Create a well-structured report with:
-1. Executive Summary (2-3 paragraphs)
-2. Introduction & Background
-3. Key Findings (with specific details from sources)
-4. Analysis & Insights
-5. Conclusions
-6. Recommendations
+Create a report with 6-8 sections. Each section should be CONCISE — use bullet points, not paragraphs.
 
-Use markdown formatting. Include specific citations to the sources where relevant.
-Be thorough, analytical, and professional."""
+For each section provide:
+1. title: A clear section heading (max 6 words)
+2. bullets: 3-4 SHORT bullet points (max 15 words each) — key findings only, no filler text
+3. imageKeyword: A 2-4 word phrase for AI image generation that visually represents this section (e.g., "patient monitoring dashboard", "clinical team collaboration")
+4. visualType: "workflow" if the section describes a process/flow with sequential steps, "none" otherwise
+5. workflowSteps: Only if visualType is "workflow" — list of 3-5 short step labels (max 5 words each)
+6. icon: from chart, users, clock, target, shield, globe, lightbulb, rocket, cog, check, growth, home, briefcase
 
-    response = await generate_with_ai(prompt, "You are an expert research analyst. Create detailed, well-structured reports.")
+Format as JSON array:
+[
+  {{
+    "sectionNumber": 1,
+    "title": "Section Title",
+    "bullets": ["Key point 1", "Key point 2", "Key point 3"],
+    "imageKeyword": "relevant visual concept",
+    "visualType": "none",
+    "workflowSteps": [],
+    "icon": "chart"
+  }}
+]
+
+RULES:
+- Keep bullets SHORT and data-driven. No long sentences.
+- First section should be an Executive Summary
+- Last section should be Recommendations or Next Steps
+- Use "workflow" type for 1-2 sections that describe processes
+- Every section must have a specific imageKeyword
+- Only output the JSON array, no other text."""
+
+    response = await generate_with_ai(prompt, "You are an expert research analyst. Create concise, visual report structures.")
     
-    report = f"""📄 RESEARCH REPORT
-
-Title: {title}
-Generated: {datetime.now().strftime('%B %d, %Y')}
-Sources: {len(sources)} documents analyzed
-
-{'═'*60}
-
-{response}
-
-{'═'*60}
-
-SOURCES REFERENCED:
-{chr(10).join(f'• {s}' for s in sources)}
-"""
+    # Parse JSON
+    try:
+        import json
+        clean = response.strip()
+        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        report_sections = json.loads(clean)
+        for sec in report_sections:
+            sec.setdefault('title', 'Section')
+            sec.setdefault('bullets', [])
+            sec.setdefault('imageKeyword', sec.get('title', ''))
+            sec.setdefault('visualType', 'none')
+            sec.setdefault('workflowSteps', [])
+            sec.setdefault('icon', 'briefcase')
+    except Exception as e:
+        logger.error(f"Report JSON parse error: {e}")
+        report_sections = [
+            {"sectionNumber": 1, "title": title, "bullets": ["Report generated from source documents"], "imageKeyword": "research analysis", "visualType": "none", "workflowSteps": [], "icon": "chart"}
+        ]
+    
+    # Also generate a text summary for the content field
+    text_content = f"RESEARCH REPORT: {title}\nGenerated: {datetime.now().strftime('%B %d, %Y')}\nSources: {len(sources)} documents\n\n"
+    for sec in report_sections:
+        text_content += f"## {sec['title']}\n"
+        for b in sec.get('bullets', []):
+            text_content += f"- {b}\n"
+        text_content += "\n"
     
     return GenerateResponse(
         id=str(uuid.uuid4()),
         type="report",
         title=title,
-        content=report
+        content=text_content,
+        slides_data=report_sections,
+        theme=detect_theme(content)
     )
 
 async def generate_mindmap(content: str, sources: List[str], title: str) -> GenerateResponse:
