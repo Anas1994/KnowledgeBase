@@ -31,6 +31,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - [x] Data Table as Excel XLSX (summary sheet + table sheets with formatted data)
 - [x] Professional PPTX with AI images, proper alignment, teal/gold theme
 - [x] Enhanced chat: translation, multi-turn history, depth settings, markdown, quick actions
+- [x] Enhanced chat v2: RAG chunk retrieval, 5 chat modes (General/Compare/Deep Analysis/Exec Summary/Q&A Prep), source-specific filtering, follow-up suggestions, rich citations with excerpts, DOCX export
 - [x] Image compression (800x600 JPEG ~40-50KB) for fast exports
 - [x] Budget error handling with user-friendly messages
 - [x] RFP Generator: template upload, batched AI generation, DOCX/PDF exports with TOC
@@ -48,6 +49,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - **Mar 17, S9**: RFP Generator feature — wizard UI, batched generation, DOCX/PDF exports, template parsing
 - **Apr 15, S10**: Canvas renderers for Mind Map, Flashcards, Quiz, Data Table — all 4 output types now export as visually rich PNG images instead of plain .txt files. Fixed Pydantic model to accept Union[List[dict], dict] for slides_data.
 - **Apr 15, S11**: Changed export formats per user request — Flashcards now PPTX (one slide per card via pptxgenjs), Quiz now Word DOCX (via backend /api/export/quiz-docx), Data Table now Excel XLSX (via backend /api/export/datatable-xlsx). Mind Map stays PNG. Added professional formatting: quiz has title page + answer key, excel has summary + per-table sheets.
+- **Apr 15, S12**: Enhanced chat system — Phase A: RAG-style chunk retrieval (sources split into ~400-word overlapping chunks, keyword relevance scoring for top-K retrieval, 40K char context limit). Phase B: 5 chat modes (General/Compare/Deep Analysis/Executive Summary/Q&A Prep), source-specific filtering (select which sources to focus on), follow-up suggestions (3 smart next-questions after each response). Phase C: rich citations with source excerpts, chat export as professional DOCX via backend endpoint.
 
 ## Backlog
 - P2: Visual slide preview in output modal
