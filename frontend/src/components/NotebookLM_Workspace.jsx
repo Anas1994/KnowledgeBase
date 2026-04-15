@@ -392,6 +392,8 @@ export default function KnowledgeBase() {
   const [nbVisibility, setNbVisibility] = useState("private");
   // Chat
   const [chatDepth, setChatDepth] = useState("balanced");
+  const [chatMode, setChatMode] = useState("general");
+  const [chatSourceFilter, setChatSourceFilter] = useState([]); // [] = all sources
   const [showChatSettings, setShowChatSettings] = useState(false);
   // RFP
   const [rfpOpen, setRfpOpen] = useState(false);
@@ -683,8 +685,7 @@ export default function KnowledgeBase() {
     setGenerating(true);
     
     try {
-      // Build history from previous messages (last 10)
-      const history = updatedMessages.slice(-11, -1).map(m => ({
+      const history = updatedMessages.slice(-13, -1).map(m => ({
         role: m.role === "ai" ? "assistant" : "user",
         content: m.content
       }));
@@ -696,7 +697,9 @@ export default function KnowledgeBase() {
           message: text,
           notebook_id: 'default',
           history,
-          depth: chatDepth
+          depth: chatDepth,
+          source_ids: chatSourceFilter,
+          mode: chatMode
         })
       });
       
@@ -708,6 +711,7 @@ export default function KnowledgeBase() {
         role: "ai",
         content: data.response,
         citations: data.citations || [],
+        follow_ups: data.follow_ups || [],
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         pinned: false
       };
@@ -715,12 +719,12 @@ export default function KnowledgeBase() {
       logActivity("AI query answered", text.substring(0, 40), "#006C5B");
     } catch (e) {
       console.error('Chat error:', e);
-      const aiMsg = { id: Date.now() + 1, role: "ai", content: "Something went wrong while processing your request. This could be a temporary issue — please try again. If it persists, your LLM key balance may need to be topped up (Profile > Universal Key > Add Balance).", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      const aiMsg = { id: Date.now() + 1, role: "ai", content: "Something went wrong while processing your request. This could be a temporary issue — please try again. If it persists, your LLM key balance may need to be topped up (Profile > Universal Key > Add Balance).", citations: [], follow_ups: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
       setMessages(p => [...p, aiMsg]);
     }
     
     setGenerating(false);
-  }, [chatInput, messages, chatDepth, sources, logActivity, toast]);
+  }, [chatInput, messages, chatDepth, chatMode, chatSourceFilter, sources, logActivity, toast]);
 
   const clearChat = useCallback(() => {
     setConfirm({ msg: "Clear all chat history? This cannot be undone.", onYes: () => { setMessages([]); setConfirm(null); toast("Chat cleared", "warn"); }, onNo: () => setConfirm(null) });
@@ -729,14 +733,13 @@ export default function KnowledgeBase() {
   const regenerateLast = useCallback(async () => {
     const lastUser = [...messages].reverse().find(m => m.role === "user");
     if (!lastUser) return;
-    // Remove last AI response
     const lastAiId = Math.max(...messages.filter(x => x.role === "ai").map(x => x.id));
     const filtered = messages.filter(m => !(m.role === "ai" && m.id === lastAiId));
     setMessages(filtered);
     setGenerating(true);
     
     try {
-      const history = filtered.slice(-10).map(m => ({
+      const history = filtered.slice(-12).map(m => ({
         role: m.role === "ai" ? "assistant" : "user",
         content: m.content
       }));
@@ -747,21 +750,23 @@ export default function KnowledgeBase() {
           message: lastUser.content,
           notebook_id: 'default',
           history: history.slice(0, -1),
-          depth: chatDepth
+          depth: chatDepth,
+          source_ids: chatSourceFilter,
+          mode: chatMode
         })
       });
       if (!response.ok) throw new Error('Regenerate failed');
       const data = await response.json();
-      const aiMsg = { id: Date.now(), role: "ai", content: data.response, citations: data.citations || [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      const aiMsg = { id: Date.now(), role: "ai", content: data.response, citations: data.citations || [], follow_ups: data.follow_ups || [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
       setMessages(p => [...p, aiMsg]);
     } catch (e) {
       console.error('Regenerate error:', e);
-      const aiMsg = { id: Date.now(), role: "ai", content: "Sorry, regeneration failed. Please try again.", citations: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
+      const aiMsg = { id: Date.now(), role: "ai", content: "Sorry, regeneration failed. Please try again.", citations: [], follow_ups: [], time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), pinned: false };
       setMessages(p => [...p, aiMsg]);
     }
     setGenerating(false);
     toast("Response regenerated");
-  }, [messages, chatDepth, toast]);
+  }, [messages, chatDepth, chatMode, chatSourceFilter, toast]);
 
   const pinMessage = useCallback((id) => {
     setMessages(p => p.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m));
@@ -775,11 +780,32 @@ export default function KnowledgeBase() {
     toast("Saved to notes");
   }, [logActivity, toast]);
 
-  const exportChat = useCallback(() => {
-    const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.time}\n${m.content}${m.citations ? "\nCitations: " + m.citations.join(", ") : ""}`).join("\n\n---\n\n");
-    const blob = new Blob([text], { type: "text/plain" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${notebookTitle}-chat.txt`; a.click();
-    toast("Chat exported");
+  const exportChat = useCallback(async () => {
+    if (!messages.length) { toast("No messages to export", "warn"); return; }
+    try {
+      toast("Generating chat document...", "warn");
+      const res = await fetch(`${API_URL}/api/export/chat-docx`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, title: `${notebookTitle} — Chat` })
+      });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${notebookTitle.replace(/[<>:"/\\|?*]/g, "_")}_chat.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast("Chat exported as Word document");
+    } catch (e) {
+      console.error('Chat DOCX export error:', e);
+      // Fallback to text export
+      const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.time}\n${m.content}`).join("\n\n---\n\n");
+      const blob = new Blob([text], { type: "text/plain" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${notebookTitle}-chat.txt`; a.click();
+      toast("Chat exported as text (DOCX failed)");
+    }
   }, [messages, notebookTitle, toast]);
 
   // ── Studio ───────────────────────────────────────────────────────────────
@@ -2015,11 +2041,35 @@ export default function KnowledgeBase() {
               </div>
               {/* Chat settings bar */}
               {showChatSettings && (
-                <div style={{ background: "var(--bg-tint)", borderBottom: "1px solid var(--border)", padding: "8px 20px", display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>Reasoning Depth:</span>
-                  {["fast", "balanced", "deep"].map(d => (
-                    <button key={d} onClick={() => { setChatDepth(d); toast(`Depth set to ${d}`); }} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: chatDepth === d ? "var(--primary)" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: "1px solid " + (chatDepth === d ? "var(--primary)" : "var(--border)"), cursor: "pointer" }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
-                  ))}
+                <div style={{ background: "var(--bg-tint)", borderBottom: "1px solid var(--border)", padding: "10px 20px", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+                  {/* Depth */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", minWidth: 50, textTransform: "uppercase", letterSpacing: 1 }}>Depth</span>
+                    {["fast", "balanced", "deep"].map(d => (
+                      <button key={d} data-testid={`depth-${d}`} onClick={() => { setChatDepth(d); toast(`Depth: ${d}`); }} style={{ padding: "3px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: chatDepth === d ? "var(--primary)" : "var(--bg-light)", color: chatDepth === d ? "white" : "var(--text-secondary)", border: "1px solid " + (chatDepth === d ? "var(--primary)" : "var(--border)"), cursor: "pointer" }}>{d.charAt(0).toUpperCase() + d.slice(1)}</button>
+                    ))}
+                  </div>
+                  {/* Mode */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", minWidth: 50, textTransform: "uppercase", letterSpacing: 1 }}>Mode</span>
+                    {[
+                      { key: "general", label: "General", icon: "sparkle" },
+                      { key: "compare", label: "Compare", icon: "chart" },
+                      { key: "deep_analysis", label: "Deep Analysis", icon: "search" },
+                      { key: "executive_summary", label: "Exec Summary", icon: "briefcase" },
+                      { key: "qa_prep", label: "Q&A Prep", icon: "help" }
+                    ].map(m => (
+                      <button key={m.key} data-testid={`mode-${m.key}`} onClick={() => { setChatMode(m.key); toast(`Mode: ${m.label}`); }} style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: chatMode === m.key ? "var(--primary)" : "var(--bg-light)", color: chatMode === m.key ? "white" : "var(--text-secondary)", border: "1px solid " + (chatMode === m.key ? "var(--primary)" : "var(--border)"), cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Ic n={m.icon} size={10} /> {m.label}</button>
+                    ))}
+                  </div>
+                  {/* Source filter */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", minWidth: 50, textTransform: "uppercase", letterSpacing: 1 }}>Focus</span>
+                    <button data-testid="source-filter-all" onClick={() => setChatSourceFilter([])} style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: chatSourceFilter.length === 0 ? "var(--primary)" : "var(--bg-light)", color: chatSourceFilter.length === 0 ? "white" : "var(--text-secondary)", border: "1px solid " + (chatSourceFilter.length === 0 ? "var(--primary)" : "var(--border)"), cursor: "pointer" }}>All Sources</button>
+                    {indexedSources.slice(0, 6).map(s => (
+                      <button key={s.id} data-testid={`source-filter-${s.id}`} onClick={() => setChatSourceFilter(prev => prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id])} style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: chatSourceFilter.includes(s.id) ? "var(--primary)" : "var(--bg-light)", color: chatSourceFilter.includes(s.id) ? "white" : "var(--text-secondary)", border: "1px solid " + (chatSourceFilter.includes(s.id) ? "var(--primary)" : "var(--border)"), cursor: "pointer", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title.length > 20 ? s.title.slice(0, 18) + '...' : s.title}</button>
+                    ))}
+                  </div>
                 </div>
               )}
               {/* Messages */}
@@ -2065,9 +2115,29 @@ export default function KnowledgeBase() {
                       </div>
                       {m.citations && m.citations.length > 0 && (
                         <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                          {m.citations.map((c, ci) => (
-                            <span key={ci} style={{ padding: "2px 9px", borderRadius: 20, background: "var(--primary-strong)", color: "var(--primary)", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid var(--primary-border-medium)" }} title="View source">📎 {c}</span>
-                          ))}
+                          {m.citations.map((c, ci) => {
+                            const citeName = typeof c === 'object' ? c.source : c;
+                            const excerpt = typeof c === 'object' ? c.excerpt : '';
+                            return (
+                              <span key={ci} style={{ padding: "3px 9px", borderRadius: 20, background: "var(--primary-strong)", color: "var(--primary)", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid var(--primary-border-medium)", position: "relative" }} title={excerpt || citeName}>
+                                <Ic n="book" size={9} /> {citeName}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Follow-up suggestions */}
+                      {m.follow_ups && m.follow_ups.length > 0 && m.id === messages[messages.length - 1]?.id && (
+                        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1 }}>Suggested follow-ups</span>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                            {m.follow_ups.map((fu, fi) => (
+                              <button key={fi} data-testid={`follow-up-${fi}`} onClick={() => sendMessage(fu)} style={{ padding: "5px 11px", borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 10, fontWeight: 500, cursor: "pointer", textAlign: "left", lineHeight: 1.3, transition: "all .15s" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-strong)'; e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary-border-medium)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-card)'; e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+                              >{fu}</button>
+                            ))}
+                          </div>
                         </div>
                       )}
                       {m.pinned && <div style={{ fontSize: 10, color: "var(--primary)", marginTop: 4 }}>📌 Pinned</div>}
@@ -2107,7 +2177,12 @@ export default function KnowledgeBase() {
                     </button>
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 6, textAlign: "center" }}>{t("groundedIn")} {indexedSources.length} {indexedSources.length !== 1 ? t("indexedSources") : t("indexedSource")} · {t("poweredBy")} · {t("shiftEnter")}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 6, textAlign: "center" }}>
+                  {t("groundedIn")} {chatSourceFilter.length > 0 ? chatSourceFilter.length : indexedSources.length} {indexedSources.length !== 1 ? t("indexedSources") : t("indexedSource")}
+                  {chatMode !== "general" && <> · Mode: <b style={{ color: "var(--primary)" }}>{chatMode.replace('_', ' ')}</b></>}
+                  {chatSourceFilter.length > 0 && <> · <b style={{ color: "var(--primary)" }}>Filtered</b></>}
+                  {" · "}{t("poweredBy")} · {t("shiftEnter")}
+                </div>
               </div>
             </div>
           )}

@@ -224,6 +224,75 @@ def count_chunks(text: str, chunk_size: int = 500) -> int:
     words = text.split()
     return max(1, len(words) // chunk_size)
 
+
+def split_into_chunks(text: str, chunk_size: int = 400, overlap: int = 50) -> List[str]:
+    """Split text into overlapping word-based chunks for retrieval"""
+    words = text.split()
+    if len(words) <= chunk_size:
+        return [text] if text.strip() else []
+    chunks = []
+    start = 0
+    while start < len(words):
+        end = min(start + chunk_size, len(words))
+        chunks.append(' '.join(words[start:end]))
+        start += chunk_size - overlap
+    return chunks
+
+
+async def store_source_chunks(source_id: str, source_title: str, content: str, notebook_id: str):
+    """Split source content into chunks and store in DB for retrieval"""
+    await db.source_chunks.delete_many({"source_id": source_id})
+    chunks = split_into_chunks(content)
+    if not chunks:
+        return
+    docs = []
+    for i, chunk_text in enumerate(chunks):
+        docs.append({
+            "source_id": source_id,
+            "source_title": source_title,
+            "notebook_id": notebook_id,
+            "chunk_index": i,
+            "text": chunk_text,
+            "word_count": len(chunk_text.split())
+        })
+    if docs:
+        await db.source_chunks.insert_many(docs)
+
+
+def score_chunk_relevance(query: str, chunk_text: str) -> float:
+    """Simple keyword-based relevance scoring"""
+    query_words = set(query.lower().split())
+    stop_words = {'the','a','an','is','are','was','were','be','been','being','have','has','had',
+                  'do','does','did','will','would','could','should','may','might','shall','can',
+                  'to','of','in','for','on','with','at','by','from','as','into','about','what',
+                  'which','who','whom','this','that','these','those','am','or','and','but','not',
+                  'no','all','any','my','your','his','her','its','our','their','i','you','he','she',
+                  'it','we','they','me','him','us','them'}
+    query_words = query_words - stop_words
+    if not query_words:
+        return 0.0
+    chunk_lower = chunk_text.lower()
+    matches = sum(1 for w in query_words if w in chunk_lower)
+    return matches / len(query_words)
+
+
+async def retrieve_relevant_chunks(query: str, notebook_id: str, source_ids: List[str] = None, top_k: int = 12) -> List[dict]:
+    """Retrieve the most relevant chunks for a query using keyword scoring"""
+    filter_q = {"notebook_id": notebook_id}
+    if source_ids:
+        filter_q["source_id"] = {"$in": source_ids}
+    
+    all_chunks = await db.source_chunks.find(filter_q, {"_id": 0}).to_list(500)
+    
+    if not all_chunks:
+        return []
+    
+    for chunk in all_chunks:
+        chunk["score"] = score_chunk_relevance(query, chunk["text"])
+    
+    all_chunks.sort(key=lambda c: c["score"], reverse=True)
+    return all_chunks[:top_k]
+
 async def generate_with_ai(prompt: str, system_message: str = "You are an expert research assistant.") -> str:
     """Generate content using GPT-5.1 via Emergent"""
     try:
@@ -392,6 +461,9 @@ async def upload_source(file: UploadFile = File(...), notebook_id: str = "defaul
         doc['created_at'] = doc['created_at'].isoformat()
         await db.sources.insert_one(doc)
         
+        # Store chunks for retrieval
+        await store_source_chunks(source.id, source.title, text, notebook_id)
+        
         return {
             "id": source.id,
             "title": source.title,
@@ -432,6 +504,9 @@ async def add_url_source(data: SourceCreate):
         doc = source.model_dump()
         doc['created_at'] = doc['created_at'].isoformat()
         await db.sources.insert_one(doc)
+        
+        # Store chunks for retrieval
+        await store_source_chunks(source.id, source.title, text, data.notebook_id)
         
         return {
             "id": source.id,
@@ -1197,48 +1272,88 @@ class ChatRequest(BaseModel):
     notebook_id: str = "default"
     history: List[ChatMessage] = []
     depth: str = "balanced"
+    source_ids: List[str] = []  # Empty = all sources
+    mode: str = "general"  # general, compare, deep_analysis, executive_summary, qa_prep
 
 class ChatResponse(BaseModel):
     response: str
-    citations: List[str] = []
+    citations: List[dict] = []  # [{source: title, excerpt: text}]
+    follow_ups: List[str] = []  # Suggested next questions
 
 @api_router.post("/chat", response_model=ChatResponse)
 async def chat_with_sources(request: ChatRequest):
-    """Chat with AI about the indexed sources — supports translation, analysis, and multi-turn conversation"""
+    """Enhanced chat with RAG retrieval, modes, source filtering, and follow-up suggestions"""
     
-    # Get all indexed sources
-    sources = await db.sources.find(
-        {"notebook_id": request.notebook_id, "status": "indexed"},
-        {"_id": 0}
-    ).to_list(50)
+    # Get indexed sources (optionally filtered)
+    filter_q = {"notebook_id": request.notebook_id, "status": "indexed"}
+    if request.source_ids:
+        filter_q["id"] = {"$in": request.source_ids}
+    
+    sources = await db.sources.find(filter_q, {"_id": 0}).to_list(50)
     
     if not sources:
         return ChatResponse(
             response="No sources have been indexed yet. Please add some documents or URLs first.",
-            citations=[]
+            citations=[], follow_ups=[]
         )
     
-    # Detect if this is a translation request (needs more content but simpler prompt)
+    source_titles = [s['title'] for s in sources]
+    source_ids_list = [s['id'] for s in sources]
+    
+    # ── Phase A: Smart Retrieval ──
+    # Try chunk-based retrieval first (RAG)
+    relevant_chunks = await retrieve_relevant_chunks(
+        request.message, request.notebook_id,
+        source_ids=source_ids_list if request.source_ids else None,
+        top_k=15
+    )
+    
+    if relevant_chunks and any(c['score'] > 0.1 for c in relevant_chunks):
+        # Use relevant chunks — group by source for context
+        context_parts = []
+        seen_sources = set()
+        for chunk in relevant_chunks:
+            if chunk['score'] < 0.05:
+                continue
+            src_label = chunk['source_title']
+            if src_label not in seen_sources:
+                context_parts.append(f"\n--- SOURCE: {src_label} ---")
+                seen_sources.add(src_label)
+            context_parts.append(chunk['text'])
+        combined_content = '\n'.join(context_parts)
+        retrieval_method = "semantic"
+    else:
+        # Fallback: send full source content with higher limits
+        combined_content = ""
+        for src in sources:
+            combined_content += f"\n\n--- SOURCE: {src['title']} ---\n{src.get('content', '')}"
+        combined_content = combined_content[:40000]
+        retrieval_method = "full"
+    
+    # Detect translation requests
     msg_lower = request.message.lower()
     is_translation = any(kw in msg_lower for kw in ['translate', 'ترجم', 'translation', 'ترجمة'])
     
-    # Combine source content — keep it manageable to avoid API timeouts
-    per_source_limit = 3000
-    combined_content = ""
-    for src in sources:
-        combined_content += f"\n\n--- SOURCE: {src['title']} ---\n{src.get('content', '')[:per_source_limit]}"
-    combined_content = combined_content[:15000]
-    
-    # Build conversation history context
+    # Build conversation history
     history_text = ""
     if request.history:
-        recent = request.history[-10:]
+        recent = request.history[-12:]
         history_text = "\n\nCONVERSATION HISTORY:\n"
         for msg in recent:
             role_label = "USER" if msg.role == "user" else "ASSISTANT"
-            history_text += f"{role_label}: {msg.content[:500]}\n"
+            history_text += f"{role_label}: {msg.content[:600]}\n"
     
-    # Depth-specific instructions
+    # ── Phase B: Chat Modes ──
+    mode_instructions = {
+        "general": "Answer the user's question thoroughly based on the sources. Be helpful and accurate.",
+        "compare": "Compare and contrast information across the different sources. Highlight similarities, differences, contradictions, and complementary points. Structure your response with clear comparison categories.",
+        "deep_analysis": "Provide an exhaustive, in-depth analysis. Cover every angle: root causes, implications, trends, risks, opportunities. Cross-reference between sources. Think critically and provide original insights.",
+        "executive_summary": "Provide a concise executive summary suitable for senior leadership. Focus on key decisions, metrics, risks, and recommendations. Use bullet points and keep it actionable. Maximum 300 words.",
+        "qa_prep": "Generate a thorough Q&A preparation document. Anticipate likely questions about this topic, provide detailed answers for each, and note potential follow-ups. Think like a subject matter expert preparing for a review meeting."
+    }
+    mode_note = mode_instructions.get(request.mode, mode_instructions["general"])
+    
+    # Depth instructions
     depth_instructions = {
         "fast": "Be concise and direct. Give a short, focused answer in 2-4 sentences. Skip unnecessary detail.",
         "balanced": "Provide a clear, well-structured answer with moderate detail. Use bullet points or short paragraphs.",
@@ -1246,18 +1361,24 @@ async def chat_with_sources(request: ChatRequest):
     }
     depth_note = depth_instructions.get(request.depth, depth_instructions["balanced"])
     
+    source_list_str = ', '.join(source_titles[:10])
+    source_filter_note = f"(User selected {len(source_titles)} specific sources)" if request.source_ids else f"(All {len(source_titles)} sources)"
+    
     prompt = f"""You are a powerful research assistant with full access to the user's source documents.
 
-SOURCE DOCUMENTS:
+AVAILABLE SOURCES {source_filter_note}: {source_list_str}
+
+SOURCE CONTENT (retrieved via {retrieval_method} search):
 {combined_content}
 {history_text}
 
 USER REQUEST: {request.message}
 
+CHAT MODE: {mode_note}
 RESPONSE DEPTH: {depth_note}
 
 CAPABILITIES — You can and should handle ALL of the following when asked:
-1. **Translation**: Translate source content to ANY language the user requests (Arabic, English, French, Spanish, etc.). Translate accurately and naturally, preserving meaning and formatting. When translating, output the translated text directly.
+1. **Translation**: Translate source content to ANY language the user requests (Arabic, English, French, Spanish, etc.). Translate accurately and naturally, preserving meaning and formatting.
 2. **Summarization**: Summarize individual sources or all sources together.
 3. **Analysis & Comparison**: Compare sources, identify patterns, contradictions, or gaps.
 4. **Extraction**: Pull out specific data, statistics, key terms, or quotes from sources.
@@ -1265,43 +1386,219 @@ CAPABILITIES — You can and should handle ALL of the following when asked:
 6. **Reformatting**: Convert content into tables, bullet points, numbered lists, or other formats.
 7. **Writing**: Draft new content (emails, reports, briefs) based on source material.
 
-RULES:
-- When the user asks you to translate, DO translate the content. Do not refuse or say you cannot.
-- Cite specific source names when referencing information.
+CITATION RULES:
+- When referencing information, include [Source: source_name] inline.
+- Cite the specific source name when quoting or paraphrasing.
 - If information is not in the sources, say so clearly.
-- Use markdown formatting: **bold**, *italic*, bullet points, numbered lists, headers.
-- Maintain conversation continuity — reference prior messages when relevant."""
+
+FORMATTING RULES:
+- Use markdown: **bold**, *italic*, bullet points, numbered lists, ### headers.
+- Maintain conversation continuity — reference prior messages when relevant.
+
+FOLLOW-UP: After your response, add a line "---FOLLOWUPS---" and then provide exactly 3 suggested follow-up questions the user might want to ask next, one per line. Make them specific and useful based on the conversation context. Do NOT number them."""
 
     system_msg = "You are an expert multilingual research assistant. You translate, analyze, summarize, compare, and answer questions about source documents. You support all languages."
     
     try:
         response = await generate_with_ai(prompt, system_msg)
     except HTTPException as he:
-        # Return budget or error messages to the frontend clearly
         error_msg = he.detail if he.detail else "AI generation failed"
         if he.status_code == 402:
             return ChatResponse(
-                response=f"**LLM Budget Exceeded**\n\nYour Universal Key balance has run out. Please go to **Profile > Universal Key > Add Balance** to top up, or enable **Auto Top-Up** so this doesn't happen again.",
-                citations=[]
+                response="**LLM Budget Exceeded**\n\nYour Universal Key balance has run out. Please go to **Profile > Universal Key > Add Balance** to top up, or enable **Auto Top-Up** so this doesn't happen again.",
+                citations=[], follow_ups=[]
             )
         return ChatResponse(
             response=f"An error occurred: {error_msg}\n\nPlease try again in a moment.",
-            citations=[]
+            citations=[], follow_ups=[]
         )
     
-    # Extract citations
-    citations = []
-    for src in sources:
-        if src['title'].lower() in response.lower():
-            citations.append(src['title'])
+    # Parse follow-ups from response
+    follow_ups = []
+    main_response = response
+    if "---FOLLOWUPS---" in response:
+        parts = response.split("---FOLLOWUPS---", 1)
+        main_response = parts[0].strip()
+        fu_text = parts[1].strip()
+        follow_ups = [line.strip().lstrip('- ').lstrip('•').strip() for line in fu_text.split('\n') if line.strip() and len(line.strip()) > 5][:3]
     
-    if not citations and sources:
-        citations = [sources[0]['title']]
+    # Extract rich citations
+    import re
+    citations = []
+    seen_cites = set()
+    cite_pattern = re.findall(r'\[Source:\s*([^\]]+)\]', main_response)
+    for cite_name in cite_pattern:
+        clean = cite_name.strip()
+        if clean not in seen_cites:
+            seen_cites.add(clean)
+            # Find a relevant excerpt from the chunk data
+            excerpt = ""
+            for chunk in relevant_chunks[:5]:
+                if clean.lower() in chunk.get('source_title', '').lower():
+                    excerpt = chunk['text'][:150] + "..."
+                    break
+            citations.append({"source": clean, "excerpt": excerpt})
+    
+    # Fallback: if no inline citations, add source names
+    if not citations:
+        for src in sources[:3]:
+            if src['title'].lower() in main_response.lower():
+                citations.append({"source": src['title'], "excerpt": ""})
     
     return ChatResponse(
-        response=response,
-        citations=citations
+        response=main_response,
+        citations=citations,
+        follow_ups=follow_ups
     )
+
+
+@api_router.post("/chat/backfill-chunks")
+async def backfill_chunks(notebook_id: str = "default"):
+    """Backfill chunks for existing sources that don't have them yet"""
+    sources = await db.sources.find(
+        {"notebook_id": notebook_id, "status": "indexed"},
+        {"_id": 0, "id": 1, "title": 1, "content": 1}
+    ).to_list(100)
+    count = 0
+    for src in sources:
+        existing = await db.source_chunks.count_documents({"source_id": src['id']})
+        if existing == 0 and src.get('content'):
+            await store_source_chunks(src['id'], src['title'], src['content'], notebook_id)
+            count += 1
+    return {"backfilled": count, "total_sources": len(sources)}
+
+
+class ChatExportRequest(BaseModel):
+    messages: List[dict]
+    title: str = "Chat Export"
+
+@api_router.post("/export/chat-docx")
+async def export_chat_docx(req: ChatExportRequest):
+    """Export chat as a professionally formatted Word document"""
+    from docx import Document
+    from docx.shared import Pt, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml.ns import nsdecls
+    from docx.oxml import parse_xml
+
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin = Cm(2)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+
+    style = doc.styles['Normal']
+    style.font.name = 'Calibri'
+    style.font.size = Pt(11)
+    style.font.color.rgb = RGBColor(55, 65, 81)
+    style.paragraph_format.line_spacing = 1.4
+
+    h1 = doc.styles['Heading 1']
+    h1.font.name = 'Calibri'
+    h1.font.size = Pt(18)
+    h1.font.bold = True
+    h1.font.color.rgb = RGBColor(0, 77, 64)
+    h1.paragraph_format.space_before = Pt(18)
+    h1.paragraph_format.space_after = Pt(8)
+
+    # Title bar
+    tbl = doc.add_table(rows=1, cols=1)
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = tbl.cell(0, 0)
+    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="004D40"/>')
+    cell.paragraphs[0]._element.get_or_add_pPr().append(shading)
+    cell_p = cell.paragraphs[0]
+    cell_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cell_p.space_before = Pt(16)
+    cell_p.space_after = Pt(16)
+    run = cell_p.add_run(req.title)
+    run.font.size = Pt(18)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    run.font.name = 'Calibri'
+
+    doc.add_paragraph().space_after = Pt(4)
+    meta = doc.add_paragraph()
+    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = meta.add_run(f'{len(req.messages)} messages  |  {datetime.now().strftime("%B %d, %Y")}  |  Knowledge Base')
+    run.font.size = Pt(10)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+
+    doc.add_paragraph().space_after = Pt(12)
+
+    # Messages
+    for msg in req.messages:
+        role = msg.get('role', 'user')
+        content = msg.get('content', '')
+        time_str = msg.get('time', '')
+
+        # Role header
+        p = doc.add_paragraph()
+        p.space_before = Pt(12)
+        p.space_after = Pt(2)
+        if role == 'user':
+            run = p.add_run('You')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(0, 77, 64)
+        else:
+            run = p.add_run('AI Assistant')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(14, 165, 233)
+        if time_str:
+            run = p.add_run(f'  {time_str}')
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(148, 163, 184)
+
+        # Content
+        cp = doc.add_paragraph()
+        cp.space_after = Pt(4)
+        # Simple markdown stripping for clean text
+        import re as _re
+        clean_content = _re.sub(r'\*\*([^*]+)\*\*', r'\1', content)
+        clean_content = _re.sub(r'\*([^*]+)\*', r'\1', clean_content)
+        run = cp.add_run(clean_content)
+        run.font.size = Pt(11)
+
+        # Citations
+        cites = msg.get('citations', [])
+        if cites:
+            cp2 = doc.add_paragraph()
+            cp2.space_after = Pt(2)
+            run = cp2.add_run('Sources: ')
+            run.font.size = Pt(9)
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(0, 77, 64)
+            cite_names = [c.get('source', c) if isinstance(c, dict) else str(c) for c in cites]
+            run = cp2.add_run(', '.join(cite_names))
+            run.font.size = Pt(9)
+            run.font.color.rgb = RGBColor(100, 116, 139)
+
+        # Separator
+        sep = doc.add_paragraph()
+        sep.space_after = Pt(2)
+        run = sep.add_run('\u2500' * 60)
+        run.font.size = Pt(6)
+        run.font.color.rgb = RGBColor(229, 231, 235)
+
+    # Footer
+    doc.add_paragraph().space_after = Pt(20)
+    fp = doc.add_paragraph()
+    fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = fp.add_run('Generated by Knowledge Base  |  AI-Powered Research Assistant')
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    import re as _re
+    safe_title = _re.sub(r'[^\x20-\x7E]', '', req.title).replace(' ', '_') or 'chat'
+    filename = f'{safe_title}_chat.docx'
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 
 # ─── RFP GENERATOR ──────────────────────────────────────────────────────────
 
