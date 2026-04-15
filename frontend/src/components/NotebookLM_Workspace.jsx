@@ -203,7 +203,7 @@ const genStudioContent = (type, title, sources) => {
   const src = sources.filter(s => s.status === "indexed");
   const topics = ["Core Concepts", "Key Findings", "Methodology", "Analysis", "Conclusions", "Future Directions"];
   const contentMap = {
-    audio: `🎙️ AI PODCAST SCRIPT — "${title}"\n\nHOST A: Welcome back to HealthOS Audio! Today we're diving deep into the knowledge base titled "${title}".\n\nHOST B: That's right. We've processed ${src.length} sources and extracted the key themes.\n\nHOST A: Let's start with the fundamentals. The sources reveal three major themes...\n\nHOST B: What really stood out to me was the tension between different perspectives in the indexed materials.\n\nHOST A: Exactly. ${src[0] ? `"${src[0].title}"` : "The primary source"} makes a compelling case that...\n\n[Duration: ~12 minutes | Generated from ${src.length} sources]`,
+    audio: `🎙️ AI PODCAST SCRIPT — "${title}"\n\nHOST A: Welcome back to Knowledge Base Audio! Today we're diving deep into the knowledge base titled "${title}".\n\nHOST B: That's right. We've processed ${src.length} sources and extracted the key themes.\n\nHOST A: Let's start with the fundamentals. The sources reveal three major themes...\n\nHOST B: What really stood out to me was the tension between different perspectives in the indexed materials.\n\nHOST A: Exactly. ${src[0] ? `"${src[0].title}"` : "The primary source"} makes a compelling case that...\n\n[Duration: ~12 minutes | Generated from ${src.length} sources]`,
     slides: `📊 SLIDE DECK — "${title}"\n\nSlide 1: Title & Overview\n━━━━━━━━━━━━━━━━━━━\n"${title}" — Research Summary\nGenerated from ${src.length} indexed sources\n\nSlide 2: Executive Summary\n━━━━━━━━━━━━━━━━━━━\n• 3 key themes identified\n• ${src.length} sources analyzed\n• Critical insights highlighted\n\nSlide 3-8: Core Content\n━━━━━━━━━━━━━━━━━━━\n${topics.slice(0, 4).map((t, i) => `Slide ${i + 3}: ${t}`).join("\n")}\n\nSlide 9: Conclusions & Next Steps\nSlide 10: References & Citations\n\n[${src.length * 2 + 4} slides total]`,
     mindmap: `🗺️ MIND MAP — "${title}"\n\nCentral Node: ${title}\n\n├── Theme 1: Core Concepts\n│   ├── Definition & Scope\n│   ├── Historical Context\n│   └── Key Terminology\n│\n├── Theme 2: Key Findings\n│   ├── Primary Evidence\n│   ├── Supporting Data\n│   └── Contradictions\n│\n├── Theme 3: Methodology\n│   ├── Research Approach\n│   └── Data Sources\n│\n└── Theme 4: Implications\n    ├── Short-term Impact\n    └── Long-term Outlook\n\n[${src.length * 8 + 12} nodes | Generated from ${src.length} sources]`,
     report: `📄 RESEARCH REPORT\n\nTitle: ${title}\nGenerated: ${new Date().toLocaleDateString()}\nSources: ${src.length} documents\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. EXECUTIVE SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nThis report synthesizes findings from ${src.length} indexed sources. The analysis reveals consistent patterns across materials with notable insights for practitioners and researchers alike.\n\n2. INTRODUCTION\nThe scope of this analysis encompasses the full breadth of uploaded materials, cross-referenced for thematic consistency.\n\n3. KEY FINDINGS\n• Finding 1: Primary theme identified across majority of sources\n• Finding 2: Secondary patterns emerge in supporting materials\n• Finding 3: Contradictions noted between ${src[0]?.title || "Source A"} and ${src[1]?.title || "Source B"}\n\n4. ANALYSIS & INSIGHTS\nDetailed examination of the source materials reveals...\n\n5. CONCLUSIONS\nBased on the evidence, the most defensible conclusion is...\n\n6. REFERENCES\n${src.map((s, i) => `[${i + 1}] ${s.title}`).join("\n")}\n\n[Word count: ~2,400]`,
@@ -211,7 +211,7 @@ const genStudioContent = (type, title, sources) => {
     quiz: `📝 QUIZ — "${title}"\n\nGenerated from ${src.length} sources | ${src.length * 2 + 3} questions\n\n━━━━━━━━━━━━━━━━━━━\nQuestion 1 (Multiple Choice)\n━━━━━━━━━━━━━━━━━━━\nAccording to the source materials, which approach is most strongly supported?\n\nA) Theoretical framework without empirical validation\nB) ✓ Evidence-based approach with cross-source verification\nC) Single-source dependency\nD) Anecdotal reasoning\n\n━━━━━━━━━━━━━━━━━━━\nQuestion 2 (True/False)\n━━━━━━━━━━━━━━━━━━━\nThe sources unanimously agree on all presented conclusions.\n→ FALSE — notable contradictions exist between sources.\n\n━━━━━━━━━━━━━━━━━━━\nQuestion 3 (Short Answer)\n━━━━━━━━━━━━━━━━━━━\nDescribe the primary methodology used across the indexed sources.\n→ Sample answer: Mixed quantitative/qualitative with systematic review...\n\n[${src.length * 2 + 3} questions total]`,
     infographic: `📊 INFOGRAPHIC DATA — "${title}"\n\n╔══════════════════════════════╗\n║   KEY METRICS AT A GLANCE   ║\n╠══════════════════════════════╣\n║  📚 ${src.length} Sources Analyzed       ║\n║  🔍 ${src.reduce((a, s) => a + (s.chunks || 0), 0)} Total Chunks Indexed   ║\n║  🏷️  6 Topic Tags Identified  ║\n║  💡 12 Key Insights Found    ║\n╚══════════════════════════════╝\n\nSOURCE DISTRIBUTION\n████████████ 60% PDFs\n██████ 30% URLs  \n██ 10% Other\n\nTOP 3 THEMES\n1. ████████████ Primary Topic (42%)\n2. ████████ Secondary Topic (31%)\n3. █████ Supporting Context (27%)\n\n[Visual infographic data — export for rendering]`,
     datatable: `📋 EXTRACTED DATA TABLE — "${title}"\n\n┌─────────────────────┬──────────┬──────────┬────────────┐\n│ Source              │ Type     │ Chunks   │ Key Topics │\n├─────────────────────┼──────────┼──────────┼────────────┤\n${src.map(s => `│ ${s.title.substring(0, 19).padEnd(19)} │ ${s.type.padEnd(8)} │ ${String(s.chunks || 0).padEnd(8)} │ AI, ML     │`).join("\n")}\n└─────────────────────┴──────────┴──────────┴────────────┘\n\nSUMMARY STATISTICS\n• Total Sources: ${src.length}\n• Total Chunks: ${src.reduce((a, s) => a + (s.chunks || 0), 0)}\n• Avg Chunks/Source: ${src.length ? Math.round(src.reduce((a, s) => a + (s.chunks || 0), 0) / src.length) : 0}\n• Source Types: ${[...new Set(src.map(s => s.type))].join(", ")}\n\n[CSV export available]`,
-    video: `🎬 VIDEO SCRIPT — "${title}"\n\nDuration: ~8 minutes\nFormat: Explainer / Documentary\n\nSCENE 1 — INTRO (0:00 - 0:45)\n[Fade in with ambient music]\nNARRATOR: "In today's exploration, we examine the findings from ${src.length} carefully curated sources on the topic of ${title}."\n\nSCENE 2 — CONTEXT (0:45 - 2:00)\n[B-roll: Abstract visualization of knowledge graph]\nNARRATOR: "The landscape of this subject has evolved significantly, as evidenced by the materials we've analyzed..."\n\nSCENE 3 — KEY FINDINGS (2:00 - 5:30)\n[Split screen: source highlights]\nFor each of the ${src.length} sources, we surface the most salient points...\n\nSCENE 4 — SYNTHESIS (5:30 - 7:15)\n[Animated timeline]\nBringing it all together...\n\nSCENE 5 — OUTRO (7:15 - 8:00)\n[Logo animation]\n"Powered by HealthOS"\n\n[Script ready for narration recording]`,
+    video: `🎬 VIDEO SCRIPT — "${title}"\n\nDuration: ~8 minutes\nFormat: Explainer / Documentary\n\nSCENE 1 — INTRO (0:00 - 0:45)\n[Fade in with ambient music]\nNARRATOR: "In today's exploration, we examine the findings from ${src.length} carefully curated sources on the topic of ${title}."\n\nSCENE 2 — CONTEXT (0:45 - 2:00)\n[B-roll: Abstract visualization of knowledge graph]\nNARRATOR: "The landscape of this subject has evolved significantly, as evidenced by the materials we've analyzed..."\n\nSCENE 3 — KEY FINDINGS (2:00 - 5:30)\n[Split screen: source highlights]\nFor each of the ${src.length} sources, we surface the most salient points...\n\nSCENE 4 — SYNTHESIS (5:30 - 7:15)\n[Animated timeline]\nBringing it all together...\n\nSCENE 5 — OUTRO (7:15 - 8:00)\n[Logo animation]\n"Powered by Knowledge Base"\n\n[Script ready for narration recording]`,
   };
   return contentMap[type] || "Content generated.";
 };
@@ -263,7 +263,7 @@ Based on the evidence, transformer architectures with attention mechanisms remai
 [Word count: ~2,400]` },
   { id: 2, type: "audio", title: "AI Research Overview Podcast", created: "Mar 9", size: "8.1 MB", notebookId: "nb1", content: `🎙️ AI PODCAST SCRIPT — "AI Research Overview"
 
-HOST A: Welcome back to HealthOS Audio! Today we're diving deep into the knowledge base covering AI research trends.
+HOST A: Welcome back to Knowledge Base Audio! Today we're diving deep into the knowledge base covering AI research trends.
 
 HOST B: That's right. We've processed 3 sources and extracted the key themes around LLM architectures.
 
@@ -344,12 +344,12 @@ const ACTIVITY_LOG_INIT = [
 ];
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────
-export default function HealthOS() {
+export default function KnowledgeBase() {
   const { t, toggleLang, isRTL, dir, lang } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   // Core state
   const [view, setView] = useState("overview");
-  const [notebookTitle, setNotebookTitle] = useState("Health Intelligence Workspace");
+  const [notebookTitle, setNotebookTitle] = useState("My Workspace");
   const [editTitle, setEditTitle] = useState(false);
   const [sources, setSources] = useState([]); // Load from backend
   const [messages, setMessages] = useState([]);
@@ -1036,7 +1036,7 @@ export default function HealthOS() {
       try {
         const PptxGenJS = await loadPptxGen();
         const pptx = new PptxGenJS();
-        pptx.author = 'HealthOS';
+        pptx.author = 'Knowledge Base';
         pptx.title = out.title;
         pptx.subject = 'AI-Generated Professional Presentation';
         pptx.layout = 'LAYOUT_16x9';
@@ -1118,7 +1118,7 @@ export default function HealthOS() {
           objects: [
             { rect: { x: 0, y: 0, w: '100%', h: 0.06, fill: { color: theme.primary } } },
             { rect: { x: 0, y: 5.25, w: '100%', h: 0.38, fill: { color: theme.primary } } },
-            { text: { text: 'HealthOS', options: { x: 0.4, y: 5.28, w: 2, h: 0.3, fontSize: 8, color: theme.accent, fontFace: 'Calibri' } } },
+            { text: { text: 'Knowledge Base', options: { x: 0.4, y: 5.28, w: 2, h: 0.3, fontSize: 8, color: theme.accent, fontFace: 'Calibri' } } },
           ]
         });
 
@@ -1164,7 +1164,7 @@ export default function HealthOS() {
                 fontSize: 17, color: theme.light, fontFace: 'Calibri', align: 'center'
               });
             }
-            slide.addText('AI-Generated Presentation  |  HealthOS', {
+            slide.addText('AI-Generated Presentation  |  Knowledge Base', {
               x: 2.5, y: 4.6, w: 5, h: 0.3,
               fontSize: 9, color: theme.accent, fontFace: 'Calibri', align: 'center'
             });
@@ -2557,7 +2557,7 @@ export default function HealthOS() {
                         })}
                       </div>
                       {/* Footer */}
-                      <div style={{ textAlign: "center", marginTop: 14, padding: "10px 0", borderTop: "1px solid var(--border)", color: "var(--text-tertiary)", fontSize: 10 }}>Generated by HealthOS  |  AI-Powered Research Assistant</div>
+                      <div style={{ textAlign: "center", marginTop: 14, padding: "10px 0", borderTop: "1px solid var(--border)", color: "var(--text-tertiary)", fontSize: 10 }}>Generated by Knowledge Base  |  AI-Powered Research Assistant</div>
                     </div>
                   ) : (
                     <pre style={{ fontFamily: "inherit", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.75, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{modalData.content || "No content generated."}</pre>

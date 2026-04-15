@@ -3,8 +3,8 @@
 export const translations = {
   en: {
     // Branding
-    brandName: "Health",
-    brandSuffix: "OS",
+    brandName: "Knowledge",
+    brandSuffix: "Base",
     
     // Nav Tabs
     overview: "Overview",
@@ -16,7 +16,7 @@ export const translations = {
     share: "Share",
     
     // Workspace
-    workspaceTitle: "Health Intelligence Workspace",
+    workspaceTitle: "My Workspace",
     workspaceDesc: "Healthcare intelligence workspace for analyzing medical research, clinical data, and health policy documents.",
     healthcare: "Healthcare",
     private: "Private",
@@ -235,8 +235,8 @@ export const translations = {
   },
   ar: {
     // Branding
-    brandName: "هيلث",
-    brandSuffix: "OS",
+    brandName: "Knowledge",
+    brandSuffix: "Base",
     
     // Nav Tabs
     overview: "نظرة عامة",
@@ -248,7 +248,7 @@ export const translations = {
     share: "مشاركة",
     
     // Workspace
-    workspaceTitle: "مساحة عمل الذكاء الصحي",
+    workspaceTitle: "مساحة العمل",
     workspaceDesc: "مساحة عمل الذكاء الصحي لتحليل البحوث الطبية والبيانات السريرية ووثائق السياسة الصحية.",
     healthcare: "الرعاية الصحية",
     private: "خاص",
