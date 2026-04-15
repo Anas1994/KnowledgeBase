@@ -26,9 +26,9 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - [x] Canvas infographic with S-curve layout + AI-generated images (PNG export)
 - [x] Canvas report with image-first layout, stats, workflows (PNG export)
 - [x] Canvas mind map with radial node-branch layout (PNG export)
-- [x] Canvas flashcards with card grid, Q/A, categories, difficulty badges (PNG export)
-- [x] Canvas quiz with MCQ, True/False, Short Answer sections + Answer Key (PNG export)
-- [x] Canvas data table with stat cards, professional tables (PNG export)
+- [x] Flashcards as professional PPTX (one slide per card, Q/A, category, difficulty)
+- [x] Quiz as Word DOCX (title page, MCQ/TF/Short sections, answer key)
+- [x] Data Table as Excel XLSX (summary sheet + table sheets with formatted data)
 - [x] Professional PPTX with AI images, proper alignment, teal/gold theme
 - [x] Enhanced chat: translation, multi-turn history, depth settings, markdown, quick actions
 - [x] Image compression (800x600 JPEG ~40-50KB) for fast exports
@@ -47,6 +47,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - **Mar 17, S8**: Infographic overhaul — S-curve flowing layout with dark bg, alternating sections, large AI images
 - **Mar 17, S9**: RFP Generator feature — wizard UI, batched generation, DOCX/PDF exports, template parsing
 - **Apr 15, S10**: Canvas renderers for Mind Map, Flashcards, Quiz, Data Table — all 4 output types now export as visually rich PNG images instead of plain .txt files. Fixed Pydantic model to accept Union[List[dict], dict] for slides_data.
+- **Apr 15, S11**: Changed export formats per user request — Flashcards now PPTX (one slide per card via pptxgenjs), Quiz now Word DOCX (via backend /api/export/quiz-docx), Data Table now Excel XLSX (via backend /api/export/datatable-xlsx). Mind Map stays PNG. Added professional formatting: quiz has title page + answer key, excel has summary + per-table sheets.
 
 ## Backlog
 - P2: Visual slide preview in output modal

@@ -1466,7 +1466,7 @@ export default function KnowledgeBase() {
         title.addText('FLASHCARDS', { x: 0, y: 1.8, w: '100%', h: 0.5, fontSize: 12, bold: true, color: 'C8A86B', align: 'center', fontFace: 'Calibri', letterSpacing: 4 });
         title.addText(out.title, { x: 0.8, y: 2.3, w: 8.4, h: 1.2, fontSize: 32, bold: true, color: 'FFFFFF', align: 'center', fontFace: 'Calibri' });
         title.addShape('rect', { x: 3.5, y: 3.6, w: 3, h: 0.04, fill: { color: 'C8A86B' } });
-        title.addText(`${cards.length} Cards  |  ${categories.length} Categories`, { x: 0, y: 3.9, w: '100%', h: 0.4, fontSize: 13, color: 'FFFFFF80', align: 'center', fontFace: 'Calibri' });
+        title.addText(`${cards.length} Cards  |  ${categories.length} Categories`, { x: 0, y: 3.9, w: '100%', h: 0.4, fontSize: 13, color: 'A0A0A0', align: 'center', fontFace: 'Calibri' });
 
         // Card slides
         cards.forEach((card, idx) => {
@@ -1496,7 +1496,7 @@ export default function KnowledgeBase() {
           slide.addText(card.question || '', { x: 0.9, y: 1.7, w: 8.3, h: 1.3, fontSize: 18, color: '1A1F36', fontFace: 'Calibri', valign: 'top', wrap: true });
 
           // Answer area
-          slide.addShape('roundRect', { x: 0.5, y: 3.5, w: 9, h: 1.6, fill: { color: catColor + '08' }, rectRadius: 0.1, line: { color: catColor + '30', width: 1 } });
+          slide.addShape('roundRect', { x: 0.5, y: 3.5, w: 9, h: 1.6, fill: { color: 'F0F5F4' }, rectRadius: 0.1, line: { color: 'D0D5D4', width: 1 } });
           slide.addText('ANSWER', { x: 0.9, y: 3.6, w: 2, h: 0.3, fontSize: 9, bold: true, color: catColor, fontFace: 'Calibri', letterSpacing: 2 });
           slide.addText(card.answer || '', { x: 0.9, y: 3.95, w: 8.3, h: 1.0, fontSize: 14, color: '475569', fontFace: 'Calibri', valign: 'top', wrap: true });
 
