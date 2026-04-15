@@ -1638,8 +1638,8 @@ TEMPLATE TEXT:
 Return ONLY a JSON array of section title strings, e.g.:
 ["Executive Summary", "Background & Context", "Scope of Work", ...]
 
-If you cannot identify clear sections, return the standard RFP sections:
-["Executive Summary", "Background & Context", "Project Objectives", "Scope of Work", "Technical Requirements", "Deliverables", "Timeline & Milestones", "Budget Considerations", "Evaluation Criteria", "Submission Requirements", "Terms & Conditions", "Appendices"]
+If you cannot identify clear sections, return the standard enterprise RFP sections:
+["Executive Summary", "Background & Context", "Definitions & Acronyms", "Project Objectives", "Scope of Work", "Technical Requirements", "Deliverables & Acceptance Criteria", "Timeline & Milestones", "Commercial Model & Budget", "Evaluation Criteria", "Instructions to Bidders", "Submission Requirements", "Legal Terms & Conditions", "Data Protection & Security Compliance", "Appendices"]
 
 Only output the JSON array."""
 
@@ -1653,14 +1653,14 @@ Only output the JSON array."""
         if not isinstance(sections, list):
             sections = []
     except:
-        sections = ["Executive Summary", "Background & Context", "Project Objectives", "Scope of Work", "Technical Requirements", "Deliverables", "Timeline & Milestones", "Budget Considerations", "Evaluation Criteria", "Submission Requirements", "Terms & Conditions", "Appendices"]
+        sections = ["Executive Summary", "Background & Context", "Definitions & Acronyms", "Project Objectives", "Scope of Work", "Technical Requirements", "Deliverables & Acceptance Criteria", "Timeline & Milestones", "Commercial Model & Budget", "Evaluation Criteria", "Instructions to Bidders", "Submission Requirements", "Legal Terms & Conditions", "Data Protection & Security Compliance", "Appendices"]
     
     return {"sections": sections, "template_text": text[:3000]}
 
 
 @api_router.post("/rfp/generate")
 async def generate_rfp(req: RFPGenerateRequest):
-    """Generate RFP content for a small batch of sections"""
+    """Generate enterprise-grade RFP content for a batch of sections"""
     import json
     sources_cursor = db.sources.find(
         {"notebook_id": req.notebook_id, "status": "indexed"},
@@ -1675,39 +1675,171 @@ async def generate_rfp(req: RFPGenerateRequest):
     source_names = []
     for s in sources:
         source_names.append(s['title'])
-        combined += f"\n\n[{s['title']}]:\n{s['content'][:2000]}"
-    combined = combined[:5000]
+        combined += f"\n\n[{s['title']}]:\n{s['content'][:4000]}"
+    combined = combined[:20000]
     
-    tone_map = {"Formal": "formal bureaucratic", "Technical": "technical specifications", "Executive": "executive strategic", "Proposal-style": "persuasive benefits-focused"}
+    tone_map = {"Formal": "formal bureaucratic procurement", "Technical": "technical specifications-focused", "Executive": "executive strategic decision-maker", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
     
-    prompt = f"""You are an RFP writer. Write professional content for these RFP sections:
+    # Build section-specific generation instructions
+    section_instructions = {}
+    section_instructions["Executive Summary"] = """Write a concise 1-page executive summary covering: project purpose, strategic alignment, expected outcomes, and call-to-action for vendors. Max 250 words. Decision-maker friendly."""
+    section_instructions["Background & Context"] = """Describe the organizational context, current challenges, existing systems landscape, and the strategic drivers behind this procurement. Reference the knowledge base content. Include organizational structure if available."""
+    section_instructions["Definitions & Acronyms"] = """Create a table of key terms and acronyms used in this RFP:
+| Term | Definition |
+| --- | --- |
+List at least 10 relevant terms based on the project domain and source content."""
+    section_instructions["Project Objectives"] = """Structure into 4 sub-categories with bullet points:
+### Strategic Objectives
+- (alignment with organizational strategy)
+### Technical Objectives
+- (systems, integrations, architecture goals)
+### Operational Objectives
+- (efficiency, workflow, process improvements)
+### Governance Objectives
+- (compliance, oversight, reporting)"""
+    section_instructions["Scope of Work"] = """Group into clearly defined workstreams. For each workstream include activities and outputs in a table:
+### Workstream 1: [Name]
+| Activity | Description | Output |
+| --- | --- | --- |
+Repeat for 3-5 workstreams. Include explicit in-scope and out-of-scope statements."""
+    section_instructions["Technical Requirements"] = """Organize into categories with structured requirements:
+### Integration Requirements
+- (APIs, system interconnections, data flows)
+### Data Requirements
+- (data models, migration, quality standards)
+### Security Requirements
+- (authentication, authorization, encryption)
+### Workflow Requirements
+- (business process automation, approvals)
+### Reporting & Analytics
+- (dashboards, KPIs, data visualization)
+### Architecture Principles
+- (scalability, availability, cloud/on-prem)"""
+    section_instructions["Deliverables & Acceptance Criteria"] = """Present all deliverables in a structured table:
+| Deliverable | Description | Format | Owner | Acceptance Criteria |
+| --- | --- | --- | --- | --- |
+Include at least 8-10 deliverables covering design, development, testing, training, documentation, and go-live. Each must have measurable acceptance criteria."""
+    section_instructions["Timeline & Milestones"] = """Define a phased timeline:
+### Phase 1: Initiation & Planning (Weeks 1-4)
+- Key milestones and governance gates
+### Phase 2: Design & Development (Weeks 5-16)
+- Key milestones
+### Phase 3: Testing & UAT (Weeks 17-22)
+- Key milestones
+### Phase 4: Go-Live & Transition (Weeks 23-26)
+- Key milestones
+Include dependencies between phases and governance approval gates."""
+    section_instructions["Commercial Model & Budget"] = """Define:
+### Pricing Model
+- Specify Fixed Price / Time & Materials / Hybrid expectations
+### Cost Breakdown Structure
+| Cost Category | Description | Pricing Type |
+| --- | --- | --- |
+Include categories: Professional Services, Software Licensing, Infrastructure, Training, Support & Maintenance, Project Management
+### Payment Schedule
+- Milestone-based payment structure tied to deliverables"""
+    section_instructions["Evaluation Criteria"] = """Create a weighted scoring table:
+| Criteria | Weight (%) | Sub-Criteria | Evaluation Method |
+| --- | --- | --- | --- |
+Include: Technical Approach (30-40%), Team & Experience (15-20%), Commercial (20-25%), Project Management (10-15%), Innovation (5-10%).
+State the minimum technical threshold score for qualification."""
+    section_instructions["Instructions to Bidders"] = """Include structured guidance:
+### Communication Protocol
+- Single point of contact, email format, response timelines
+### Clarification Process
+- Deadline for questions, method of submission, response distribution
+### Proposal Validity
+- Minimum validity period (e.g., 90 days)
+### Conflict of Interest
+- Declaration requirements and disqualification criteria"""
+    section_instructions["Submission Requirements"] = """Specify:
+### Proposal Structure
+- Technical Proposal (separate volume)
+- Financial Proposal (separate sealed volume)
+### Naming Conventions
+- File naming format requirements
+### Format Requirements
+- Page limits, font, margins, file types
+### Deadline
+- Exact submission date, time, timezone, and method"""
+    section_instructions["Legal Terms & Conditions"] = """Cover:
+### Liability & Indemnification
+- Limitation of liability, indemnification obligations
+### Confidentiality
+- NDA requirements, information handling
+### Intellectual Property
+- IP ownership of deliverables, pre-existing IP, licensing
+### Regulatory Compliance
+- Applicable laws, regulations, standards
+### Termination
+- Termination for convenience/cause, notice periods"""
+    section_instructions["Data Protection & Security Compliance"] = """Include:
+### Healthcare Data Standards
+- Applicable data protection regulations, patient data handling
+### Access Control
+- Role-based access, multi-factor authentication, least privilege
+### Audit & Logging
+- Audit trail requirements, log retention, monitoring
+### Data Residency
+- Data sovereignty requirements, hosting location
+### Incident Response
+- Breach notification timelines, response procedures"""
+    section_instructions["Appendices"] = """Reference the following appendix items:
+### Appendix A: System Integration List
+- List all systems requiring integration with brief descriptions
+### Appendix B: Data Model Templates
+- Reference to data schemas and exchange formats
+### Appendix C: Governance Framework
+- Oversight structure, steering committee, escalation paths
+### Appendix D: Risk Register Template
+| Risk | Likelihood | Impact | Mitigation | Owner |
+| --- | --- | --- | --- | --- |
+Provide 5-8 sample risks relevant to the project."""
+
+    # Build section-specific instructions for the batch
+    batch_instructions = []
+    for sec in req.template_sections:
+        instr = section_instructions.get(sec, f"Write 2-3 substantive paragraphs with bullet points where appropriate. Structure content with sub-headings.")
+        batch_instructions.append(f"=== {sec} ===\n{instr}")
+    
+    instructions_text = "\n\n".join(batch_instructions)
+    
+    prompt = f"""You are an Enterprise RFP Architect with deep experience in government, healthcare, and large-scale system integration projects.
+
+Generate PROCUREMENT-READY content for these RFP sections:
 
 {sections_list}
 
-Project: {req.project_name or 'Project'}
-Client: {req.client_name or 'Organization'}
-Tone: {tone_map.get(req.tone, 'formal')}
-{f'Instructions: {req.additional_context}' if req.additional_context else ''}
+PROJECT: {req.project_name or 'Project'}
+CLIENT: {req.client_name or 'Organization'}
+TONE: {tone_map.get(req.tone, 'formal procurement')}
+{f'ADDITIONAL CONTEXT: {req.additional_context}' if req.additional_context else ''}
 
-Knowledge base:
+KNOWLEDGE BASE CONTENT:
 {combined}
 
-RULES:
-- For each section write 2-3 substantial paragraphs (each 3-4 sentences)
-- Content must be grounded in the source material
-- Use the project and client names naturally throughout
-- Do NOT include any citations, source references, or brackets like [Source: ...]
-- For "Evaluation Criteria": define clear scoring criteria, weighting factors, and assessment methodology
-- For "Submission Requirements": specify required documents, formatting guidelines, deadlines, and submission instructions
-- For "Terms & Conditions": include standard legal terms, liability, confidentiality, and compliance requirements
-- For "Budget Considerations": include budget structure, cost categories, payment terms, and financial requirements
-- Every section MUST have at least 2 full paragraphs of substantive content — never leave any section empty
+=== SECTION-SPECIFIC INSTRUCTIONS ===
+{instructions_text}
 
-Return JSON array only:
-[{{"section": "Section Title", "content": "Paragraph 1...\\n\\nParagraph 2..."}}]"""
+=== STRUCTURAL RULES (STRICT) ===
+- NO empty sections — auto-generate substantive content for every section
+- NO long paragraphs over 150 words without structuring into bullets or tables
+- Use markdown tables (| Header | Header |) wherever data is tabular
+- Use ### for sub-headings within sections
+- Use - for bullet points
+- Use **bold** for key terms and emphasis
+- Use numbered lists (1. 2. 3.) for sequential steps
+- Standardize terminology across all sections
+- Content must be grounded in the source material where applicable
+- Do NOT include [Source: ...] citations
+- If healthcare context is detected, include HIS integration, data governance, regulatory compliance, and multi-entity workflows
 
-    response = await generate_with_ai(prompt, f"Expert RFP writer. {req.tone} tone. Professional.")
+=== OUTPUT FORMAT ===
+Return ONLY a JSON array:
+[{{"section": "Section Title", "content": "Full structured content with markdown tables, bullets, sub-headings..."}}]"""
+
+    response = await generate_with_ai(prompt, f"Enterprise RFP Architect. {req.tone} procurement tone. Government & healthcare expertise. Structured, scannable, procurement-ready output.")
     
     try:
         clean = response.strip()
@@ -1990,21 +2122,126 @@ def _export_docx(req: RFPExportRequest, date_str: str):
         run.font.size = Pt(6)
         run.font.color.rgb = RGBColor(0, 77, 64)
         
-        # Section content — strip all citations
+        # Section content — parse structured markdown (tables, bullets, sub-headings)
         content = _strip_citations(sec.get('content', ''))
-        paragraphs = content.split('\n\n')
-        
-        for para_text in paragraphs:
-            para_text = para_text.strip()
-            if not para_text:
+        lines = content.split('\n')
+        li = 0
+        while li < len(lines):
+            line = lines[li].rstrip()
+            
+            # Markdown table
+            if line.startswith('|') and '|' in line[1:]:
+                table_lines = []
+                while li < len(lines) and lines[li].strip().startswith('|'):
+                    table_lines.append(lines[li].strip())
+                    li += 1
+                # Parse rows, skip separator lines (---|---)
+                rows = []
+                for tl in table_lines:
+                    cells = [c.strip() for c in tl.split('|') if c.strip()]
+                    if cells and not all(set(c) <= set('-: ') for c in cells):
+                        rows.append(cells)
+                if rows:
+                    col_count = max(len(r) for r in rows)
+                    tbl = doc.add_table(rows=len(rows), cols=col_count)
+                    tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+                    for ri, row_data in enumerate(rows):
+                        for ci in range(col_count):
+                            cell = tbl.cell(ri, ci)
+                            val = row_data[ci] if ci < len(row_data) else ''
+                            cell.paragraphs[0].text = ''
+                            run = cell.paragraphs[0].add_run(val)
+                            run.font.size = Pt(10)
+                            run.font.name = 'Calibri'
+                            if ri == 0:
+                                run.font.bold = True
+                                run.font.color.rgb = RGBColor(255, 255, 255)
+                                shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="004D40"/>')
+                                cell._element.get_or_add_tcPr().append(shading)
+                            else:
+                                run.font.color.rgb = RGBColor(55, 65, 81)
+                                if ri % 2 == 0:
+                                    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="F8FAFB"/>')
+                                    cell._element.get_or_add_tcPr().append(shading)
+                    doc.add_paragraph().space_after = Pt(4)
                 continue
+            
+            # Sub-heading (### or ##)
+            if re.match(r'^#{2,4}\s', line):
+                txt = re.sub(r'^#+\s*', '', line)
+                h = doc.add_heading(txt, level=2)
+                for run in h.runs:
+                    run.font.color.rgb = RGBColor(0, 60, 50)
+                    run.font.size = Pt(13)
+                    run.font.name = 'Calibri'
+                li += 1
+                continue
+            
+            # Bullet point
+            if re.match(r'^\s*[-*•]\s', line):
+                bullets = []
+                while li < len(lines) and re.match(r'^\s*[-*•]\s', lines[li]):
+                    bullets.append(re.sub(r'^\s*[-*•]\s*', '', lines[li]))
+                    li += 1
+                for b in bullets:
+                    p = doc.add_paragraph(style='List Bullet')
+                    p.paragraph_format.left_indent = Cm(1)
+                    p.space_after = Pt(3)
+                    # Handle bold within bullet
+                    parts = re.split(r'(\*\*[^*]+\*\*)', b)
+                    for part in parts:
+                        if part.startswith('**') and part.endswith('**'):
+                            run = p.add_run(part[2:-2])
+                            run.font.bold = True
+                        else:
+                            run = p.add_run(part)
+                        run.font.size = Pt(11)
+                        run.font.color.rgb = RGBColor(55, 65, 81)
+                        run.font.name = 'Calibri'
+                continue
+            
+            # Numbered list
+            if re.match(r'^\s*\d+[.)]\s', line):
+                items = []
+                while li < len(lines) and re.match(r'^\s*\d+[.)]\s', lines[li]):
+                    items.append(re.sub(r'^\s*\d+[.)]\s*', '', lines[li]))
+                    li += 1
+                for item in items:
+                    p = doc.add_paragraph(style='List Number')
+                    p.paragraph_format.left_indent = Cm(1)
+                    p.space_after = Pt(3)
+                    parts = re.split(r'(\*\*[^*]+\*\*)', item)
+                    for part in parts:
+                        if part.startswith('**') and part.endswith('**'):
+                            run = p.add_run(part[2:-2])
+                            run.font.bold = True
+                        else:
+                            run = p.add_run(part)
+                        run.font.size = Pt(11)
+                        run.font.color.rgb = RGBColor(55, 65, 81)
+                        run.font.name = 'Calibri'
+                continue
+            
+            # Empty line
+            if not line.strip():
+                li += 1
+                continue
+            
+            # Regular paragraph with bold support
             para = doc.add_paragraph()
             para.space_after = Pt(8)
             para.paragraph_format.line_spacing = 1.3
-            run = para.add_run(para_text)
-            run.font.size = Pt(11)
-            run.font.color.rgb = RGBColor(55, 65, 81)
-            run.font.name = 'Calibri'
+            parts = re.split(r'(\*\*[^*]+\*\*)', line)
+            for part in parts:
+                if part.startswith('**') and part.endswith('**'):
+                    run = para.add_run(part[2:-2])
+                    run.font.bold = True
+                else:
+                    run = para.add_run(part)
+                run.font.size = Pt(11)
+                run.font.color.rgb = RGBColor(55, 65, 81)
+                run.font.name = 'Calibri'
+            li += 1
     
     # ═══════════ FOOTER PAGE ═══════════
     doc.add_page_break()

@@ -5,15 +5,18 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const SAMPLE_SECTIONS = [
   "Executive Summary",
   "Background & Context",
+  "Definitions & Acronyms",
   "Project Objectives",
   "Scope of Work",
   "Technical Requirements",
-  "Deliverables",
+  "Deliverables & Acceptance Criteria",
   "Timeline & Milestones",
-  "Budget Considerations",
+  "Commercial Model & Budget",
   "Evaluation Criteria",
+  "Instructions to Bidders",
   "Submission Requirements",
-  "Terms & Conditions",
+  "Legal Terms & Conditions",
+  "Data Protection & Security Compliance",
   "Appendices"
 ];
 
@@ -41,6 +44,135 @@ const Icons = {
   print: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
   file: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>,
 };
+
+// ── Rich content renderer for RFP sections (tables, bullets, sub-headings) ──
+function RfpContent({ text }) {
+  if (!text) return null;
+  const clean = text.replace(/\[Source:[^\]]*\]/g, '').trim();
+  const lines = clean.split('\n');
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Markdown table detection
+    if (line.includes('|') && line.trim().startsWith('|')) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      // Parse table: skip separator row (---), treat first as header
+      const rows = tableLines
+        .filter(r => !r.replace(/[|\-\s:]/g, '').length === false)
+        .filter(r => !/^\|[\s\-:]+\|$/.test(r.replace(/\s/g, '').replace(/-+/g, '-')))
+        .map(r => r.split('|').filter((c, ci, arr) => ci > 0 && ci < arr.length - (r.trim().endsWith('|') ? 1 : 0)).map(c => c.trim()));
+      const isSeparator = (r) => r.every(c => /^[\-:]+$/.test(c));
+      const dataRows = rows.filter(r => !isSeparator(r));
+      if (dataRows.length > 0) {
+        const headerRow = dataRows[0];
+        const bodyRows = dataRows.slice(1);
+        elements.push(
+          <div key={`tbl-${i}`} style={{ margin: "14px 0", overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "#004D40" }}>
+                  {headerRow.map((h, hi) => (
+                    <th key={hi} style={{ padding: "8px 12px", color: "#fff", fontWeight: 700, textAlign: "left", borderBottom: "2px solid #C8A86B", fontSize: 11 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, ri) => (
+                  <tr key={ri} style={{ background: ri % 2 === 0 ? "#F8FAFB" : "#fff" }}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} style={{ padding: "7px 12px", borderBottom: "1px solid #E5E7EB", color: "#374151", fontSize: 12 }}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        continue;
+      }
+    }
+
+    // Sub-headings (### or **)
+    if (/^#{2,4}\s/.test(line)) {
+      const level = (line.match(/^#+/) || [''])[0].length;
+      const txt = line.replace(/^#+\s*/, '');
+      elements.push(
+        <div key={`h-${i}`} style={{ fontSize: level <= 2 ? 14 : 13, fontWeight: 700, color: level <= 2 ? "#004D40" : "#1A1F36", marginTop: level <= 2 ? 18 : 12, marginBottom: 6 }}>{txt}</div>
+      );
+      i++;
+      continue;
+    }
+
+    // Bullet points
+    if (/^\s*[-*•]\s/.test(line)) {
+      const bullets = [];
+      while (i < lines.length && /^\s*[-*•]\s/.test(lines[i])) {
+        bullets.push(lines[i].replace(/^\s*[-*•]\s*/, ''));
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} style={{ margin: "6px 0", paddingLeft: 18 }}>
+          {bullets.map((b, bi) => (
+            <li key={bi} style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, marginBottom: 3 }}>
+              <BoldText text={b} />
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered lists
+    if (/^\s*\d+[.)]\s/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\s*\d+[.)]\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\s*\d+[.)]\s*/, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} style={{ margin: "6px 0", paddingLeft: 22 }}>
+          {items.map((item, ii) => (
+            <li key={ii} style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, marginBottom: 3 }}>
+              <BoldText text={item} />
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Empty line = paragraph break
+    if (!line.trim()) { i++; continue; }
+
+    // Regular paragraph
+    elements.push(
+      <p key={`p-${i}`} style={{ fontSize: 13, color: "#374151", lineHeight: 1.85, margin: "0 0 10px 0" }}>
+        <BoldText text={line} />
+      </p>
+    );
+    i++;
+  }
+
+  return <>{elements}</>;
+}
+
+function BoldText({ text }) {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return <>{parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ fontWeight: 700, color: "#1A1F36" }}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  })}</>;
+}
 
 export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote }) {
   const [step, setStep] = useState(1); // 1=upload, 2=configure, 3=loading, 4=preview
@@ -96,9 +228,9 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
   }, [toast]);
 
   const useSample = useCallback(() => {
-    setTemplateFile({ name: "Standard_RFP_Template.txt", size: 2048 });
+    setTemplateFile({ name: "Enterprise_RFP_Template.txt", size: 4096 });
     setTemplateSections(SAMPLE_SECTIONS);
-    toast("Using standard RFP template with 12 sections");
+    toast("Using enterprise RFP template with 15 sections");
     setStep(2);
   }, [toast]);
 
@@ -304,7 +436,7 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
                 </div>
                 <div style={{ textAlign: "center", margin: "16px 0", fontSize: 11, color: "var(--text-tertiary)" }}>or</div>
                 <button data-testid="rfp-sample-btn" onClick={useSample} style={{ width: "100%", padding: "12px 0", borderRadius: 12, background: accentColor + "10", color: accentColor, fontSize: 13, fontWeight: 700, border: `1px solid ${accentColor}30`, cursor: "pointer" }}>
-                  Use Sample Template (12 standard sections)
+                  Use Enterprise Template (15 standard sections)
                 </button>
               </>
             )}
@@ -459,9 +591,7 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
                       <h2 style={{ fontSize: 16, fontWeight: 800, color: "#004D40", margin: 0 }}>{sec.section}</h2>
                     </div>
                     <div style={{ borderLeft: "3px solid #E5E7EB", paddingLeft: 20, marginLeft: 12 }}>
-                      {sec.content.replace(/\[Source:[^\]]*\]/g, '').split('\n\n').filter(Boolean).map((para, pi) => (
-                        <p key={pi} style={{ fontSize: 13, color: "#374151", lineHeight: 1.85, margin: "0 0 12px 0" }}>{para.trim()}</p>
-                      ))}
+                      <RfpContent text={sec.content} />
                     </div>
                   </div>
                 ))}
