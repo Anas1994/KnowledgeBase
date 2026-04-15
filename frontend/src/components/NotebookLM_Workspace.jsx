@@ -4,9 +4,6 @@ import { useTheme } from "../theme/ThemeContext";
 import { renderInfographicWithImages } from "../utils/infographicRenderer";
 import { renderVisualReport } from "../utils/reportRenderer";
 import { renderMindMap } from "../utils/mindmapRenderer";
-import { renderFlashcards } from "../utils/flashcardRenderer";
-import { renderQuiz } from "../utils/quizRenderer";
-import { renderDataTable } from "../utils/datatableRenderer";
 import RFPGenerator from "./RFPGenerator";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -1448,35 +1445,120 @@ export default function KnowledgeBase() {
       }
     }
 
-    // Flashcards — card grid canvas PNG
+    // Flashcards — professional PPTX with one slide per card
     if (out.type === "flashcards" && out.slides_data) {
       try {
-        await renderFlashcards(out, toast);
+        const PptxGenJS = await loadPptxGen();
+        const pptx = new PptxGenJS();
+        pptx.author = 'Knowledge Base';
+        pptx.title = out.title;
+        pptx.layout = 'LAYOUT_16x9';
+
+        const cards = Array.isArray(out.slides_data) ? out.slides_data : [];
+        const categories = [...new Set(cards.map(c => c.category || 'General'))];
+        const catColors = ['004D40', '0ea5e9', '8B5CF6', 'EC4899', 'C8A86B', 'EF4444'];
+        const diffColors = { Easy: '22C55E', Medium: 'F59E0B', Hard: 'EF4444' };
+
+        // Title slide
+        const title = pptx.addSlide();
+        title.addShape('rect', { x: 0, y: 0, w: '100%', h: '100%', fill: { color: '004D40' } });
+        title.addShape('rect', { x: 0, y: 0, w: '100%', h: 0.06, fill: { color: 'C8A86B' } });
+        title.addText('FLASHCARDS', { x: 0, y: 1.8, w: '100%', h: 0.5, fontSize: 12, bold: true, color: 'C8A86B', align: 'center', fontFace: 'Calibri', letterSpacing: 4 });
+        title.addText(out.title, { x: 0.8, y: 2.3, w: 8.4, h: 1.2, fontSize: 32, bold: true, color: 'FFFFFF', align: 'center', fontFace: 'Calibri' });
+        title.addShape('rect', { x: 3.5, y: 3.6, w: 3, h: 0.04, fill: { color: 'C8A86B' } });
+        title.addText(`${cards.length} Cards  |  ${categories.length} Categories`, { x: 0, y: 3.9, w: '100%', h: 0.4, fontSize: 13, color: 'FFFFFF80', align: 'center', fontFace: 'Calibri' });
+
+        // Card slides
+        cards.forEach((card, idx) => {
+          const catIdx = categories.indexOf(card.category || 'General');
+          const catColor = catColors[catIdx % catColors.length];
+          const diffColor = diffColors[card.difficulty] || diffColors.Medium;
+          const slide = pptx.addSlide();
+
+          // Background
+          slide.addShape('rect', { x: 0, y: 0, w: '100%', h: '100%', fill: { color: 'F8FAFB' } });
+          // Top accent bar
+          slide.addShape('rect', { x: 0, y: 0, w: '100%', h: 0.08, fill: { color: catColor } });
+
+          // Card number badge
+          slide.addShape('roundRect', { x: 0.5, y: 0.4, w: 0.6, h: 0.5, fill: { color: catColor }, rectRadius: 0.08 });
+          slide.addText(String(idx + 1), { x: 0.5, y: 0.4, w: 0.6, h: 0.5, fontSize: 18, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle', fontFace: 'Calibri' });
+
+          // Category + Difficulty
+          slide.addText(card.category || 'General', { x: 1.3, y: 0.42, w: 3, h: 0.3, fontSize: 11, color: catColor, fontFace: 'Calibri', bold: true });
+          slide.addShape('roundRect', { x: 8.2, y: 0.42, w: 1.2, h: 0.35, fill: { color: diffColor, transparency: 85 }, rectRadius: 0.15 });
+          slide.addText(card.difficulty || 'Medium', { x: 8.2, y: 0.42, w: 1.2, h: 0.35, fontSize: 10, bold: true, color: diffColor, align: 'center', valign: 'middle', fontFace: 'Calibri' });
+
+          // Question area
+          slide.addShape('roundRect', { x: 0.5, y: 1.2, w: 9, h: 2.0, fill: { color: 'FFFFFF' }, shadow: { type: 'outer', blur: 10, opacity: 0.08, offset: 3 }, rectRadius: 0.1 });
+          slide.addShape('rect', { x: 0.5, y: 1.2, w: 0.08, h: 2.0, fill: { color: catColor } });
+          slide.addText('QUESTION', { x: 0.9, y: 1.35, w: 2, h: 0.3, fontSize: 9, bold: true, color: catColor, fontFace: 'Calibri', letterSpacing: 2 });
+          slide.addText(card.question || '', { x: 0.9, y: 1.7, w: 8.3, h: 1.3, fontSize: 18, color: '1A1F36', fontFace: 'Calibri', valign: 'top', wrap: true });
+
+          // Answer area
+          slide.addShape('roundRect', { x: 0.5, y: 3.5, w: 9, h: 1.6, fill: { color: catColor + '08' }, rectRadius: 0.1, line: { color: catColor + '30', width: 1 } });
+          slide.addText('ANSWER', { x: 0.9, y: 3.6, w: 2, h: 0.3, fontSize: 9, bold: true, color: catColor, fontFace: 'Calibri', letterSpacing: 2 });
+          slide.addText(card.answer || '', { x: 0.9, y: 3.95, w: 8.3, h: 1.0, fontSize: 14, color: '475569', fontFace: 'Calibri', valign: 'top', wrap: true });
+
+          // Footer
+          slide.addText(`Card ${idx + 1} of ${cards.length}  |  Knowledge Base`, { x: 0, y: 5.2, w: '100%', h: 0.3, fontSize: 9, color: '94A3B8', align: 'center', fontFace: 'Calibri' });
+        });
+
+        await pptx.writeFile({ fileName: `${out.title.replace(/[<>:"/\\|?*]/g, "_")}_flashcards.pptx` });
+        toast("Flashcards PPTX downloaded!");
         return;
       } catch (e) {
-        console.error('Flashcard render error:', e);
+        console.error('Flashcard PPTX error:', e);
         toast(`Flashcard export failed: ${e.message || 'Unknown error'}`, "error");
       }
     }
 
-    // Quiz — exam paper canvas PNG
+    // Quiz — Word document via backend
     if (out.type === "quiz" && out.slides_data) {
       try {
-        await renderQuiz(out, toast);
+        toast("Generating quiz document...", "warn");
+        const res = await fetch(`${API_URL}/api/export/quiz-docx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: out.title, quiz_data: out.slides_data })
+        });
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${out.title.replace(/[<>:"/\\|?*]/g, "_")}_quiz.docx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast("Quiz document downloaded!");
         return;
       } catch (e) {
-        console.error('Quiz render error:', e);
+        console.error('Quiz DOCX error:', e);
         toast(`Quiz export failed: ${e.message || 'Unknown error'}`, "error");
       }
     }
 
-    // Data table — professional table canvas PNG
+    // Data table — Excel spreadsheet via backend
     if (out.type === "datatable" && out.slides_data) {
       try {
-        await renderDataTable(out, toast);
+        toast("Generating spreadsheet...", "warn");
+        const res = await fetch(`${API_URL}/api/export/datatable-xlsx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: out.title, table_data: out.slides_data })
+        });
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${out.title.replace(/[<>:"/\\|?*]/g, "_")}_data.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast("Excel spreadsheet downloaded!");
         return;
       } catch (e) {
-        console.error('Data table render error:', e);
+        console.error('Data table Excel error:', e);
         toast(`Data table export failed: ${e.message || 'Unknown error'}`, "error");
       }
     }

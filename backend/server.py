@@ -1123,7 +1123,7 @@ class SaveOutputRequest(BaseModel):
     type: str
     title: str
     content: str
-    slides_data: Optional[List[dict]] = None
+    slides_data: Optional[Union[List[dict], dict]] = None  # List for slides/report/infographic/flashcards, dict for mindmap/quiz/datatable
     notebook_id: str = "default"
 
 @api_router.post("/outputs")
@@ -1962,6 +1962,332 @@ def _export_pdf(req: RFPExportRequest, date_str: str):
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+# ── Quiz DOCX Export ──────────────────────────────────────────────────────
+class QuizExportRequest(BaseModel):
+    title: str
+    quiz_data: dict  # {mcq:[], truefalse:[], short:[]}
+
+@api_router.post("/export/quiz-docx")
+async def export_quiz_docx(req: QuizExportRequest):
+    """Export quiz as a professionally formatted Word document"""
+    from docx import Document
+    from docx.shared import Pt, Cm, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.oxml.ns import nsdecls
+    from docx.oxml import parse_xml
+
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin = Cm(2.5)
+        section.bottom_margin = Cm(2)
+        section.left_margin = Cm(2.5)
+        section.right_margin = Cm(2.5)
+
+    style = doc.styles['Normal']
+    style.font.name = 'Calibri'
+    style.font.size = Pt(11)
+    style.font.color.rgb = RGBColor(55, 65, 81)
+    style.paragraph_format.line_spacing = 1.3
+
+    h1 = doc.styles['Heading 1']
+    h1.font.name = 'Calibri'
+    h1.font.size = Pt(18)
+    h1.font.bold = True
+    h1.font.color.rgb = RGBColor(0, 77, 64)
+    h1.paragraph_format.space_before = Pt(24)
+    h1.paragraph_format.space_after = Pt(10)
+
+    h2 = doc.styles['Heading 2']
+    h2.font.name = 'Calibri'
+    h2.font.size = Pt(14)
+    h2.font.bold = True
+    h2.font.color.rgb = RGBColor(0, 60, 50)
+    h2.paragraph_format.space_before = Pt(16)
+    h2.paragraph_format.space_after = Pt(8)
+
+    mcq = req.quiz_data.get('mcq', [])
+    tf = req.quiz_data.get('truefalse', [])
+    short = req.quiz_data.get('short', [])
+    total = len(mcq) + len(tf) + len(short)
+
+    # Title page
+    for _ in range(3):
+        doc.add_paragraph().space_after = Pt(0)
+
+    tbl = doc.add_table(rows=1, cols=1)
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    cell = tbl.cell(0, 0)
+    shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="004D40"/>')
+    cell.paragraphs[0]._element.get_or_add_pPr().append(shading)
+    cell_p = cell.paragraphs[0]
+    cell_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cell_p.space_before = Pt(20)
+    cell_p.space_after = Pt(20)
+    run = cell_p.add_run('KNOWLEDGE ASSESSMENT')
+    run.font.size = Pt(13)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    run.font.name = 'Calibri'
+
+    doc.add_paragraph().space_after = Pt(12)
+
+    tp = doc.add_paragraph()
+    tp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = tp.add_run(req.title)
+    run.font.size = Pt(28)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0, 77, 64)
+
+    div = doc.add_paragraph()
+    div.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = div.add_run('\u2500' * 30)
+    run.font.color.rgb = RGBColor(200, 168, 107)
+    run.font.size = Pt(10)
+
+    meta = doc.add_paragraph()
+    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    meta.space_after = Pt(4)
+    run = meta.add_run(f'{total} Questions  |  MCQ: {len(mcq)}  |  True/False: {len(tf)}  |  Short Answer: {len(short)}')
+    run.font.size = Pt(11)
+    run.font.color.rgb = RGBColor(100, 116, 139)
+
+    # Info fields
+    doc.add_paragraph().space_after = Pt(8)
+    for field in ['Name: ____________________________', 'Date: ____________', f'Score: ______ / {total}']:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.space_after = Pt(2)
+        run = p.add_run(field)
+        run.font.size = Pt(11)
+        run.font.color.rgb = RGBColor(100, 116, 139)
+
+    doc.add_page_break()
+    qnum = 0
+
+    # MCQ Section
+    if mcq:
+        doc.add_heading('Multiple Choice Questions', level=1)
+        for q in mcq:
+            qnum += 1
+            p = doc.add_paragraph()
+            p.space_before = Pt(10)
+            run = p.add_run(f'{qnum}. ')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(0, 77, 64)
+            run = p.add_run(q.get('question', ''))
+            run.font.bold = True
+            for opt in q.get('options', []):
+                op = doc.add_paragraph(style='List Bullet')
+                op.paragraph_format.left_indent = Cm(1.2)
+                op.space_after = Pt(2)
+                run = op.add_run(opt)
+                run.font.size = Pt(11)
+            doc.add_paragraph().space_after = Pt(4)
+
+    # True/False Section
+    if tf:
+        doc.add_heading('True or False', level=1)
+        for q in tf:
+            qnum += 1
+            p = doc.add_paragraph()
+            p.space_before = Pt(8)
+            run = p.add_run(f'{qnum}. ')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(14, 165, 233)
+            run = p.add_run(q.get('statement', ''))
+            run.font.bold = True
+            tp = doc.add_paragraph()
+            tp.paragraph_format.left_indent = Cm(1.2)
+            tp.space_after = Pt(4)
+            run = tp.add_run('True  /  False       (circle one)')
+            run.font.size = Pt(10)
+            run.font.color.rgb = RGBColor(148, 163, 184)
+
+    # Short Answer Section
+    if short:
+        doc.add_heading('Short Answer Questions', level=1)
+        for q in short:
+            qnum += 1
+            p = doc.add_paragraph()
+            p.space_before = Pt(10)
+            run = p.add_run(f'{qnum}. ')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(139, 92, 246)
+            run = p.add_run(q.get('question', ''))
+            run.font.bold = True
+            for _ in range(3):
+                lp = doc.add_paragraph()
+                lp.space_after = Pt(0)
+                run = lp.add_run('_' * 80)
+                run.font.size = Pt(9)
+                run.font.color.rgb = RGBColor(229, 231, 235)
+
+    # Answer Key
+    doc.add_page_break()
+    doc.add_heading('Answer Key', level=1)
+    anum = 0
+    if mcq:
+        doc.add_heading('Multiple Choice', level=2)
+        for q in mcq:
+            anum += 1
+            p = doc.add_paragraph()
+            p.space_after = Pt(2)
+            run = p.add_run(f'{anum}. {q.get("correct", "—")}')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(0, 77, 64)
+            if q.get('explanation'):
+                run = p.add_run(f'  —  {q["explanation"]}')
+                run.font.color.rgb = RGBColor(100, 116, 139)
+                run.font.size = Pt(10)
+    if tf:
+        doc.add_heading('True / False', level=2)
+        for q in tf:
+            anum += 1
+            p = doc.add_paragraph()
+            p.space_after = Pt(2)
+            ans = 'True' if q.get('answer') else 'False'
+            run = p.add_run(f'{anum}. {ans}')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(14, 165, 233)
+            if q.get('explanation'):
+                run = p.add_run(f'  —  {q["explanation"]}')
+                run.font.color.rgb = RGBColor(100, 116, 139)
+                run.font.size = Pt(10)
+    if short:
+        doc.add_heading('Short Answer', level=2)
+        for q in short:
+            anum += 1
+            p = doc.add_paragraph()
+            p.space_after = Pt(4)
+            run = p.add_run(f'{anum}. ')
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(139, 92, 246)
+            run = p.add_run(q.get('sampleAnswer', ''))
+            run.font.size = Pt(10)
+            run.font.color.rgb = RGBColor(100, 116, 139)
+
+    # Footer
+    p = doc.add_paragraph()
+    p.space_before = Pt(30)
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run('Generated by Knowledge Base  |  AI-Powered Research Assistant')
+    run.font.size = Pt(9)
+    run.font.color.rgb = RGBColor(148, 163, 184)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    filename = f'{req.title.replace(" ", "_")}_quiz.docx'
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+# ── Data Table Excel Export ──────────────────────────────────────────────
+class DataTableExportRequest(BaseModel):
+    title: str
+    table_data: dict  # {tables:[], stats:[]}
+
+@api_router.post("/export/datatable-xlsx")
+async def export_datatable_xlsx(req: DataTableExportRequest):
+    """Export data table as a professionally formatted Excel file"""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    tables = req.table_data.get('tables', [])
+    stats = req.table_data.get('stats', [])
+
+    teal_fill = PatternFill(start_color='004D40', end_color='004D40', fill_type='solid')
+    gold_font = Font(name='Calibri', size=11, bold=True, color='C8A86B')
+    header_font = Font(name='Calibri', size=11, bold=True, color='FFFFFF')
+    title_font = Font(name='Calibri', size=14, bold=True, color='004D40')
+    stat_val_font = Font(name='Calibri', size=16, bold=True, color='004D40')
+    stat_lbl_font = Font(name='Calibri', size=10, color='64748B')
+    data_font = Font(name='Calibri', size=11, color='374151')
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'),
+        right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'),
+        bottom=Side(style='thin', color='E5E7EB')
+    )
+
+    # Summary sheet
+    ws = wb.active
+    ws.title = 'Summary'
+    ws.merge_cells('A1:E1')
+    ws['A1'] = req.title
+    ws['A1'].font = Font(name='Calibri', size=18, bold=True, color='004D40')
+    ws['A1'].alignment = Alignment(horizontal='center')
+    ws['A2'] = f'{len(tables)} Tables  |  {len(stats)} Key Metrics  |  Knowledge Base'
+    ws.merge_cells('A2:E2')
+    ws['A2'].font = Font(name='Calibri', size=10, color='94A3B8')
+    ws['A2'].alignment = Alignment(horizontal='center')
+
+    if stats:
+        row = 4
+        ws.cell(row=row, column=1, value='KEY METRICS').font = Font(name='Calibri', size=12, bold=True, color='004D40')
+        row += 1
+        for si, stat in enumerate(stats):
+            ws.cell(row=row, column=1, value=stat.get('label', '')).font = stat_lbl_font
+            ws.cell(row=row, column=2, value=stat.get('value', '')).font = stat_val_font
+            ws.cell(row=row, column=3, value=stat.get('description', '')).font = stat_lbl_font
+            row += 1
+        row += 1
+        ws.cell(row=row, column=1, value='TABLES').font = Font(name='Calibri', size=12, bold=True, color='004D40')
+        row += 1
+        for ti, table in enumerate(tables):
+            ws.cell(row=row, column=1, value=f'{ti + 1}. {table.get("title", "Table")}').font = data_font
+            ws.cell(row=row, column=2, value=f'{len(table.get("rows", []))} rows').font = stat_lbl_font
+            row += 1
+
+    ws.column_dimensions['A'].width = 25
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 40
+
+    # Table sheets
+    for ti, table in enumerate(tables):
+        sheet_name = (table.get('title', f'Table {ti+1}'))[:31]
+        wst = wb.create_sheet(title=sheet_name)
+        headers = table.get('headers', [])
+        rows = table.get('rows', [])
+
+        # Title
+        if headers:
+            wst.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+        wst.cell(row=1, column=1, value=table.get('title', f'Table {ti+1}')).font = title_font
+        wst.cell(row=1, column=1).alignment = Alignment(horizontal='left')
+
+        # Headers
+        for ci, h in enumerate(headers):
+            cell = wst.cell(row=3, column=ci + 1, value=h)
+            cell.font = header_font
+            cell.fill = teal_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+            wst.column_dimensions[get_column_letter(ci + 1)].width = max(15, len(str(h)) + 5)
+
+        # Data rows
+        alt_fill = PatternFill(start_color='F8FAFB', end_color='F8FAFB', fill_type='solid')
+        for ri, row_data in enumerate(rows):
+            if not isinstance(row_data, list):
+                continue
+            for ci, val in enumerate(row_data):
+                cell = wst.cell(row=4 + ri, column=ci + 1, value=str(val) if val is not None else '')
+                cell.font = data_font
+                cell.border = thin_border
+                cell.alignment = Alignment(vertical='center')
+                if ri % 2 == 0:
+                    cell.fill = alt_fill
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f'{req.title.replace(" ", "_")}_data.xlsx'
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
 
 # Include the router in the main app
 app.include_router(api_router)
