@@ -1741,7 +1741,9 @@ def _export_docx(req: RFPExportRequest, date_str: str):
     doc.save(buf)
     buf.seek(0)
     
-    filename = f"{(req.project_name or 'RFP').replace(' ', '_')}_RFP.docx"
+    import re as _re
+    safe_name = _re.sub(r'[^\x20-\x7E]', '', (req.project_name or 'RFP')).replace(' ', '_') or 'RFP'
+    filename = f"{safe_name}_RFP.docx"
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -1956,7 +1958,9 @@ def _export_pdf(req: RFPExportRequest, date_str: str):
     pdf.output(buf)
     buf.seek(0)
     
-    filename = f"{(req.project_name or 'RFP').replace(' ', '_')}_RFP.pdf"
+    import re as _re
+    safe_name = _re.sub(r'[^\x20-\x7E]', '', (req.project_name or 'RFP')).replace(' ', '_') or 'RFP'
+    filename = f"{safe_name}_RFP.pdf"
     return StreamingResponse(
         buf,
         media_type="application/pdf",
@@ -2179,7 +2183,9 @@ async def export_quiz_docx(req: QuizExportRequest):
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
-    filename = f'{req.title.replace(" ", "_")}_quiz.docx'
+    import re as _re
+    safe_title = _re.sub(r'[^\x20-\x7E]', '', req.title).replace(' ', '_') or 'quiz'
+    filename = f'{safe_title}_quiz.docx'
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                              headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
@@ -2284,7 +2290,9 @@ async def export_datatable_xlsx(req: DataTableExportRequest):
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    filename = f'{req.title.replace(" ", "_")}_data.xlsx'
+    import re as _re
+    safe_title = _re.sub(r'[^\x20-\x7E]', '', req.title).replace(' ', '_') or 'data'
+    filename = f'{safe_title}_data.xlsx'
     return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
