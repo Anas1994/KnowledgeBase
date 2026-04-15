@@ -35,6 +35,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - [x] Image compression (800x600 JPEG ~40-50KB) for fast exports
 - [x] Budget error handling with user-friendly messages
 - [x] RFP Generator: template upload, batched AI generation, DOCX/PDF exports with TOC
+- [x] RFP Generator v2: Enterprise-grade 15-section structure, section-specific structured prompts (tables, sub-headings, bullets), markdown content rendering in preview and DOCX export, 20K knowledge base context, healthcare context enforcement
 - [x] Rebranding: HealthOS → Knowledge Base, Health Intelligence Workspace → My Workspace
 
 ## Completed Fix Log
@@ -50,6 +51,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - **Apr 15, S10**: Canvas renderers for Mind Map, Flashcards, Quiz, Data Table — all 4 output types now export as visually rich PNG images instead of plain .txt files. Fixed Pydantic model to accept Union[List[dict], dict] for slides_data.
 - **Apr 15, S11**: Changed export formats per user request — Flashcards now PPTX (one slide per card via pptxgenjs), Quiz now Word DOCX (via backend /api/export/quiz-docx), Data Table now Excel XLSX (via backend /api/export/datatable-xlsx). Mind Map stays PNG. Added professional formatting: quiz has title page + answer key, excel has summary + per-table sheets.
 - **Apr 15, S12**: Enhanced chat system — Phase A: RAG-style chunk retrieval (sources split into ~400-word overlapping chunks, keyword relevance scoring for top-K retrieval, 40K char context limit). Phase B: 5 chat modes (General/Compare/Deep Analysis/Executive Summary/Q&A Prep), source-specific filtering (select which sources to focus on), follow-up suggestions (3 smart next-questions after each response). Phase C: rich citations with source excerpts, chat export as professional DOCX via backend endpoint.
+- **Apr 15, S13**: Enterprise RFP Generator overhaul — 15-section mandatory structure (Executive Summary through Appendices), section-specific generation prompts with tables for Definitions/Deliverables/Evaluation/Scope/Budget/Risk, sub-headings for structured sections, 20K knowledge base context (up from 5K). Frontend RfpContent renderer for markdown tables/bullets/sub-headings/bold. DOCX export parser handles all markdown elements — tables rendered as Word tables with teal headers, sub-headings as Heading 2, bullets/numbers as proper list styles.
 
 ## Backlog
 - P2: Visual slide preview in output modal
