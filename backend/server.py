@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 import uuid
 from datetime import datetime, timezone
 import httpx
@@ -85,7 +85,7 @@ class GenerateResponse(BaseModel):
     type: str
     title: str
     content: str
-    slides_data: Optional[List[dict]] = None  # For PPTX generation
+    slides_data: Optional[Union[List[dict], dict]] = None  # For PPTX/canvas generation (list for slides/report/infographic/flashcards, dict for mindmap/quiz/datatable)
     theme: Optional[str] = None  # Theme for styling
 
 # ─── HELPER FUNCTIONS ───────────────────────────────────────────────────────
@@ -740,119 +740,151 @@ RULES:
     )
 
 async def generate_mindmap(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate a mind map structure"""
-    
-    prompt = f"""Based on the following content from {len(sources)} sources, create a detailed mind map structure.
+    """Generate a structured mind map"""
+    import json
+    prompt = f"""Based on the following content from {len(sources)} sources, create a mind map structure.
 
 SOURCES: {', '.join(sources)}
-
 CONTENT:
-{content}
+{content[:5000]}
 
-Create a hierarchical mind map with:
-- One central topic
-- 4-6 main branches
-- 2-4 sub-branches for each main branch
-- Key concepts and connections
+Return a JSON object with this exact structure:
+{{
+  "center": "Central Topic (max 5 words)",
+  "branches": [
+    {{
+      "label": "Branch Name (max 4 words)",
+      "color": "teal",
+      "children": [
+        {{"label": "Sub-topic 1 (max 5 words)"}},
+        {{"label": "Sub-topic 2 (max 5 words)"}},
+        {{"label": "Sub-topic 3 (max 5 words)"}}
+      ]
+    }}
+  ]
+}}
 
-Format as an ASCII tree structure using ├── and └── characters.
-Make it comprehensive and capture all major themes."""
+RULES:
+- Exactly 5-6 main branches
+- Each branch has 3-4 children
+- color must be one of: teal, gold, blue, red, purple, green
+- Labels are SHORT (max 5 words)
+- Only output JSON, no other text."""
 
-    response = await generate_with_ai(prompt, "You are an expert at organizing information visually. Create clear mind maps.")
+    response = await generate_with_ai(prompt, "Mind map designer. Concise labels.")
+    try:
+        clean = response.strip()
+        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        mm_data = json.loads(clean)
+    except:
+        mm_data = {"center": title, "branches": [
+            {"label": "Core Concepts", "color": "teal", "children": [{"label": "Overview"}, {"label": "Key Terms"}]},
+            {"label": "Key Findings", "color": "blue", "children": [{"label": "Data Points"}, {"label": "Analysis"}]},
+            {"label": "Applications", "color": "green", "children": [{"label": "Use Cases"}, {"label": "Impact"}]},
+        ]}
     
-    mindmap = f"""🗺️ MIND MAP: {title}
-
-Generated from {len(sources)} sources: {', '.join(sources)}
-
-{'─'*60}
-
-{response}
-
-{'─'*60}
-"""
+    text_preview = f"MIND MAP: {title}\n\nCenter: {mm_data.get('center','')}\n"
+    for b in mm_data.get('branches', []):
+        text_preview += f"\n{b['label']}:\n"
+        for c in b.get('children', []):
+            text_preview += f"  - {c['label']}\n"
     
-    return GenerateResponse(
-        id=str(uuid.uuid4()),
-        type="mindmap",
-        title=title,
-        content=mindmap
-    )
+    return GenerateResponse(id=str(uuid.uuid4()), type="mindmap", title=title, content=text_preview, slides_data=mm_data)
 
 async def generate_flashcards(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate study flashcards"""
-    
-    prompt = f"""Based on the following content from {len(sources)} sources, create 15-20 study flashcards.
+    """Generate structured flashcards"""
+    import json
+    prompt = f"""Based on the following content from {len(sources)} sources, create 12 study flashcards.
 
 SOURCES: {', '.join(sources)}
-
 CONTENT:
-{content}
+{content[:5000]}
 
-For each flashcard provide:
-- A clear question (Q:)
-- A concise answer (A:)
+Return a JSON array of flashcard objects:
+[
+  {{
+    "id": 1,
+    "question": "Clear question (max 15 words)",
+    "answer": "Concise answer (max 25 words)",
+    "category": "Category Name",
+    "difficulty": "Easy"
+  }}
+]
 
-Cover key concepts, definitions, relationships, and important facts.
-Make questions that test understanding, not just memorization."""
+RULES:
+- Exactly 12 cards
+- difficulty: "Easy", "Medium", or "Hard" (mix of all three)
+- category: group related cards (3-4 unique categories)
+- Questions test understanding, not memorization
+- Only output JSON array."""
 
-    response = await generate_with_ai(prompt, "You are an expert educator. Create effective study flashcards.")
+    response = await generate_with_ai(prompt, "Expert educator. Create flashcards.")
+    try:
+        clean = response.strip()
+        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        cards = json.loads(clean)
+        for i, c in enumerate(cards):
+            c.setdefault('id', i + 1)
+            c.setdefault('difficulty', 'Medium')
+            c.setdefault('category', 'General')
+    except:
+        cards = [{"id": i+1, "question": f"Question {i+1}", "answer": "Answer pending", "category": "General", "difficulty": "Medium"} for i in range(6)]
     
-    flashcards = f"""🃏 FLASHCARD SET: {title}
-
-Generated from {len(sources)} sources
-Total cards: ~15-20
-
-{'═'*50}
-
-{response}
-
-{'═'*50}
-"""
+    text_preview = f"FLASHCARDS: {title}\n{len(cards)} cards\n\n"
+    for c in cards:
+        text_preview += f"Q{c['id']}: {c['question']}\nA: {c['answer']}\n\n"
     
-    return GenerateResponse(
-        id=str(uuid.uuid4()),
-        type="flashcards",
-        title=title,
-        content=flashcards
-    )
+    return GenerateResponse(id=str(uuid.uuid4()), type="flashcards", title=title, content=text_preview, slides_data=cards)
 
 async def generate_quiz(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate a quiz with various question types"""
-    
-    prompt = f"""Based on the following content from {len(sources)} sources, create a comprehensive quiz.
+    """Generate a structured quiz"""
+    import json
+    prompt = f"""Based on the following content from {len(sources)} sources, create a quiz.
 
 SOURCES: {', '.join(sources)}
-
 CONTENT:
-{content}
+{content[:5000]}
 
-Create a quiz with:
-- 5 Multiple Choice questions (with 4 options each, mark correct with ✓)
-- 5 True/False questions (with answers)
-- 3 Short Answer questions (with sample answers)
+Return a JSON object:
+{{
+  "mcq": [
+    {{"id": 1, "question": "Question text?", "options": ["A) Option", "B) Option", "C) Option", "D) Option"], "correct": "B", "explanation": "Brief explanation"}}
+  ],
+  "truefalse": [
+    {{"id": 1, "statement": "Statement text.", "answer": true, "explanation": "Brief explanation"}}
+  ],
+  "short": [
+    {{"id": 1, "question": "Question text?", "sampleAnswer": "Sample answer text"}}
+  ]
+}}
 
-Format clearly with question numbers and clear answer indicators."""
+RULES:
+- 5 MCQ questions, 4 TF questions, 3 short answer questions
+- Questions must be based on the source content
+- Only output JSON."""
 
-    response = await generate_with_ai(prompt, "You are an expert test creator. Create challenging but fair assessments.")
+    response = await generate_with_ai(prompt, "Expert test creator.")
+    try:
+        clean = response.strip()
+        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        quiz_data = json.loads(clean)
+    except:
+        quiz_data = {"mcq": [], "truefalse": [], "short": []}
     
-    quiz = f"""📝 QUIZ: {title}
-
-Generated from {len(sources)} sources
-Question types: Multiple Choice, True/False, Short Answer
-
-{'═'*50}
-
-{response}
-
-{'═'*50}
-"""
+    quiz_data.setdefault('mcq', [])
+    quiz_data.setdefault('truefalse', [])
+    quiz_data.setdefault('short', [])
+    total = len(quiz_data['mcq']) + len(quiz_data['truefalse']) + len(quiz_data['short'])
     
-    return GenerateResponse(
-        id=str(uuid.uuid4()),
-        type="quiz",
-        title=title,
-        content=quiz
-    )
+    text_preview = f"QUIZ: {title}\n{total} questions\n\n"
+    for q in quiz_data.get('mcq', []):
+        text_preview += f"MCQ: {q['question']}\n"
+    for q in quiz_data.get('truefalse', []):
+        text_preview += f"T/F: {q['statement']}\n"
+    for q in quiz_data.get('short', []):
+        text_preview += f"Short: {q['question']}\n"
+    
+    return GenerateResponse(id=str(uuid.uuid4()), type="quiz", title=title, content=text_preview, slides_data=quiz_data)
 
 async def generate_audio_script(content: str, sources: List[str], title: str) -> GenerateResponse:
     """Generate a podcast-style audio script"""
@@ -897,44 +929,54 @@ Sources: {', '.join(sources)}
     )
 
 async def generate_datatable(content: str, sources: List[str], title: str) -> GenerateResponse:
-    """Generate structured data extraction"""
-    
-    prompt = f"""Based on the following content from {len(sources)} sources, extract key data into structured tables.
+    """Generate structured data tables"""
+    import json
+    prompt = f"""Based on the following content from {len(sources)} sources, extract data into structured tables.
 
 SOURCES: {', '.join(sources)}
-
 CONTENT:
-{content}
+{content[:5000]}
 
-Create:
-1. A summary table of main topics/entities found
-2. A comparison table if applicable
-3. Key statistics or metrics mentioned
-4. Timeline of events if applicable
+Return a JSON object:
+{{
+  "tables": [
+    {{
+      "title": "Table Name",
+      "headers": ["Column 1", "Column 2", "Column 3"],
+      "rows": [
+        ["Value 1", "Value 2", "Value 3"],
+        ["Value 4", "Value 5", "Value 6"]
+      ]
+    }}
+  ],
+  "stats": [
+    {{"label": "Metric Name", "value": "42", "description": "Brief context"}}
+  ]
+}}
 
-Use ASCII table formatting with | and - characters.
-Include all relevant data points from the sources."""
+RULES:
+- Create 2-3 tables with real data from the sources
+- Each table has 3-5 columns and 4-8 rows
+- Extract 3-5 key statistics/metrics
+- Values must come from source content
+- Only output JSON."""
 
-    response = await generate_with_ai(prompt, "You are an expert data analyst. Extract and structure information clearly.")
+    response = await generate_with_ai(prompt, "Expert data analyst.")
+    try:
+        clean = response.strip()
+        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        dt_data = json.loads(clean)
+    except:
+        dt_data = {"tables": [{"title": "Data Summary", "headers": ["Source", "Type", "Key Finding"], "rows": [[s, "Document", "Pending extraction"] for s in sources]}], "stats": []}
     
-    datatable = f"""📋 DATA EXTRACTION: {title}
-
-Sources analyzed: {len(sources)}
-{', '.join(sources)}
-
-{'═'*50}
-
-{response}
-
-{'═'*50}
-"""
+    dt_data.setdefault('tables', [])
+    dt_data.setdefault('stats', [])
     
-    return GenerateResponse(
-        id=str(uuid.uuid4()),
-        type="datatable",
-        title=title,
-        content=datatable
-    )
+    text_preview = f"DATA TABLE: {title}\n{len(dt_data['tables'])} tables, {len(dt_data['stats'])} stats\n\n"
+    for t in dt_data['tables']:
+        text_preview += f"{t['title']}: {len(t.get('rows',[]))} rows\n"
+    
+    return GenerateResponse(id=str(uuid.uuid4()), type="datatable", title=title, content=text_preview, slides_data=dt_data)
 
 async def generate_infographic(content: str, sources: List[str], title: str) -> GenerateResponse:
     """Generate a HIGHLY VISUAL infographic — image-first, minimal text"""

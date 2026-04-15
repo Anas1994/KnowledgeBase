@@ -3,6 +3,10 @@ import { useLanguage } from "../i18n/LanguageContext";
 import { useTheme } from "../theme/ThemeContext";
 import { renderInfographicWithImages } from "../utils/infographicRenderer";
 import { renderVisualReport } from "../utils/reportRenderer";
+import { renderMindMap } from "../utils/mindmapRenderer";
+import { renderFlashcards } from "../utils/flashcardRenderer";
+import { renderQuiz } from "../utils/quizRenderer";
+import { renderDataTable } from "../utils/datatableRenderer";
 import RFPGenerator from "./RFPGenerator";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -1433,6 +1437,50 @@ export default function KnowledgeBase() {
       }
     }
     
+    // Mind map — radial canvas PNG
+    if (out.type === "mindmap" && out.slides_data) {
+      try {
+        await renderMindMap(out, toast);
+        return;
+      } catch (e) {
+        console.error('Mind map render error:', e);
+        toast(`Mind map export failed: ${e.message || 'Unknown error'}`, "error");
+      }
+    }
+
+    // Flashcards — card grid canvas PNG
+    if (out.type === "flashcards" && out.slides_data) {
+      try {
+        await renderFlashcards(out, toast);
+        return;
+      } catch (e) {
+        console.error('Flashcard render error:', e);
+        toast(`Flashcard export failed: ${e.message || 'Unknown error'}`, "error");
+      }
+    }
+
+    // Quiz — exam paper canvas PNG
+    if (out.type === "quiz" && out.slides_data) {
+      try {
+        await renderQuiz(out, toast);
+        return;
+      } catch (e) {
+        console.error('Quiz render error:', e);
+        toast(`Quiz export failed: ${e.message || 'Unknown error'}`, "error");
+      }
+    }
+
+    // Data table — professional table canvas PNG
+    if (out.type === "datatable" && out.slides_data) {
+      try {
+        await renderDataTable(out, toast);
+        return;
+      } catch (e) {
+        console.error('Data table render error:', e);
+        toast(`Data table export failed: ${e.message || 'Unknown error'}`, "error");
+      }
+    }
+
     // For all other types, download as text
     const blob = new Blob([out.content || ""], { type: "text/plain;charset=utf-8" });
     const cleanTitle = out.title.replace(/[<>:"/\\|?*]/g, "_");
