@@ -256,22 +256,39 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
         const stepIdx = Math.min(bi * stepsPerBatch + 1, PROGRESS_STEPS.length - 1);
         setProgressIdx(stepIdx);
 
-        const res = await fetch(`${API_URL}/api/rfp/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            template_sections: batches[bi],
-            project_name: projectName,
-            client_name: clientName,
-            tone,
-            additional_context: additionalCtx,
-            notebook_id: 'default'
-          })
-        });
-        if (!res.ok) throw new Error(`Batch ${bi + 1} failed`);
-        const data = await res.json();
-        allSections.push(...(data.sections || []));
-        if (data.source_names) sourceNames = data.source_names;
+        let retries = 2;
+        let data = null;
+        while (retries > 0) {
+          try {
+            const res = await fetch(`${API_URL}/api/rfp/generate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                template_sections: batches[bi],
+                project_name: projectName,
+                client_name: clientName,
+                tone,
+                additional_context: additionalCtx,
+                notebook_id: 'default'
+              })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
+            break;
+          } catch (err) {
+            retries--;
+            if (retries > 0) {
+              console.warn(`Batch ${bi + 1} failed, retrying... (${err.message})`);
+              await new Promise(r => setTimeout(r, 2000));
+            } else {
+              throw new Error(`Batch ${bi + 1} failed after retries: ${err.message}`);
+            }
+          }
+        }
+        if (data) {
+          allSections.push(...(data.sections || []));
+          if (data.source_names) sourceNames = data.source_names;
+        }
       }
 
       // Final progress

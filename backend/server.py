@@ -1675,8 +1675,8 @@ async def generate_rfp(req: RFPGenerateRequest):
     source_names = []
     for s in sources:
         source_names.append(s['title'])
-        combined += f"\n\n[{s['title']}]:\n{s['content'][:4000]}"
-    combined = combined[:20000]
+        combined += f"\n\n[{s['title']}]:\n{s['content'][:2500]}"
+    combined = combined[:8000]
     
     tone_map = {"Formal": "formal bureaucratic procurement", "Technical": "technical specifications-focused", "Executive": "executive strategic decision-maker", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
@@ -1698,28 +1698,20 @@ List at least 10 relevant terms based on the project domain and source content."
 - (efficiency, workflow, process improvements)
 ### Governance Objectives
 - (compliance, oversight, reporting)"""
-    section_instructions["Scope of Work"] = """Group into clearly defined workstreams. For each workstream include activities and outputs in a table:
-### Workstream 1: [Name]
+    section_instructions["Scope of Work"] = """Group into 3-4 workstreams with a table per workstream:
 | Activity | Description | Output |
 | --- | --- | --- |
-Repeat for 3-5 workstreams. Include explicit in-scope and out-of-scope statements."""
-    section_instructions["Technical Requirements"] = """Organize into categories with structured requirements:
+Include in-scope and out-of-scope statements."""
+    section_instructions["Technical Requirements"] = """Organize into categories with bullet requirements:
 ### Integration Requirements
-- (APIs, system interconnections, data flows)
 ### Data Requirements
-- (data models, migration, quality standards)
 ### Security Requirements
-- (authentication, authorization, encryption)
-### Workflow Requirements
-- (business process automation, approvals)
 ### Reporting & Analytics
-- (dashboards, KPIs, data visualization)
-### Architecture Principles
-- (scalability, availability, cloud/on-prem)"""
-    section_instructions["Deliverables & Acceptance Criteria"] = """Present all deliverables in a structured table:
-| Deliverable | Description | Format | Owner | Acceptance Criteria |
-| --- | --- | --- | --- | --- |
-Include at least 8-10 deliverables covering design, development, testing, training, documentation, and go-live. Each must have measurable acceptance criteria."""
+3-4 bullets per category. Keep concise."""
+    section_instructions["Deliverables & Acceptance Criteria"] = """Table format:
+| Deliverable | Description | Format | Acceptance Criteria |
+| --- | --- | --- | --- |
+Include 6-8 deliverables covering design, dev, testing, training, docs, go-live."""
     section_instructions["Timeline & Milestones"] = """Define a phased timeline:
 ### Phase 1: Initiation & Planning (Weeks 1-4)
 - Key milestones and governance gates
@@ -1805,41 +1797,30 @@ Provide 5-8 sample risks relevant to the project."""
     
     instructions_text = "\n\n".join(batch_instructions)
     
-    prompt = f"""You are an Enterprise RFP Architect with deep experience in government, healthcare, and large-scale system integration projects.
-
-Generate PROCUREMENT-READY content for these RFP sections:
+    prompt = f"""You are an Enterprise RFP Architect. Generate procurement-ready content for these sections:
 
 {sections_list}
 
 PROJECT: {req.project_name or 'Project'}
 CLIENT: {req.client_name or 'Organization'}
 TONE: {tone_map.get(req.tone, 'formal procurement')}
-{f'ADDITIONAL CONTEXT: {req.additional_context}' if req.additional_context else ''}
+{f'CONTEXT: {req.additional_context}' if req.additional_context else ''}
 
-KNOWLEDGE BASE CONTENT:
+KNOWLEDGE BASE:
 {combined}
 
-=== SECTION-SPECIFIC INSTRUCTIONS ===
+SECTION INSTRUCTIONS:
 {instructions_text}
 
-=== STRUCTURAL RULES (STRICT) ===
-- NO empty sections — auto-generate substantive content for every section
-- NO long paragraphs over 150 words without structuring into bullets or tables
-- Use markdown tables (| Header | Header |) wherever data is tabular
-- Use ### for sub-headings within sections
-- Use - for bullet points
-- Use **bold** for key terms and emphasis
-- Use numbered lists (1. 2. 3.) for sequential steps
-- Standardize terminology across all sections
-- Content must be grounded in the source material where applicable
-- Do NOT include [Source: ...] citations
-- If healthcare context is detected, include HIS integration, data governance, regulatory compliance, and multi-entity workflows
+RULES:
+- Use markdown tables (| Col | Col |), ### sub-headings, - bullets, **bold** where instructed
+- No empty sections. No [Source:] citations. No paragraphs over 150 words without structure.
+- Ground content in source material. Use project/client names naturally.
+- If healthcare detected: include HIS, data governance, regulatory compliance.
 
-=== OUTPUT FORMAT ===
-Return ONLY a JSON array:
-[{{"section": "Section Title", "content": "Full structured content with markdown tables, bullets, sub-headings..."}}]"""
+Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
 
-    response = await generate_with_ai(prompt, f"Enterprise RFP Architect. {req.tone} procurement tone. Government & healthcare expertise. Structured, scannable, procurement-ready output.")
+    response = await generate_with_ai(prompt, f"Enterprise RFP writer. {req.tone} tone.")
     
     try:
         clean = response.strip()
