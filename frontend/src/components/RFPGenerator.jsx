@@ -249,17 +249,18 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
     setStep(3);
     setProgressIdx(0);
 
-    try {
-      // Batch sections — 1 section per call for comprehensive generation
-      const batchSize = 1;
-      const batches = [];
-      for (let i = 0; i < templateSections.length; i += batchSize) {
-        batches.push(templateSections.slice(i, i + batchSize));
-      }
+    // Batch sections — 1 section per call for comprehensive generation
+    const batchSize = 1;
+    const batches = [];
+    for (let i = 0; i < templateSections.length; i += batchSize) {
+      batches.push(templateSections.slice(i, i + batchSize));
+    }
 
-      const allSections = [];
-      let sourceNames = [];
-      const stepsPerBatch = Math.floor(PROGRESS_STEPS.length / batches.length);
+    const allSections = [];
+    let sourceNames = [];
+    const stepsPerBatch = Math.floor(PROGRESS_STEPS.length / batches.length);
+
+    try {
 
       for (let bi = 0; bi < batches.length; bi++) {
         // Update progress
@@ -282,16 +283,24 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
                 notebook_id: 'default'
               })
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+              let errMsg = `HTTP ${res.status}`;
+              try { const errData = await res.json(); errMsg = errData.detail || errMsg; } catch {}
+              if (errMsg.toLowerCase().includes('budget')) {
+                throw new Error('BUDGET_EXCEEDED');
+              }
+              throw new Error(errMsg);
+            }
             data = await res.json();
             break;
           } catch (err) {
+            if (err.message === 'BUDGET_EXCEEDED') throw err;
             retries--;
             if (retries > 0) {
               console.warn(`Batch ${bi + 1} failed, retrying... (${err.message})`);
-              await new Promise(r => setTimeout(r, 2000));
+              await new Promise(r => setTimeout(r, 3000));
             } else {
-              throw new Error(`Batch ${bi + 1} failed after retries: ${err.message}`);
+              throw new Error(`Section "${batches[bi][0]}" failed: ${err.message}`);
             }
           }
         }
@@ -324,8 +333,25 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
       toast("RFP generated successfully!");
     } catch (e) {
       console.error('RFP generation error:', e);
-      toast("RFP generation failed. Please try again.", "error");
-      setStep(2);
+      if (e.message === 'BUDGET_EXCEEDED') {
+        if (allSections.length > 0) {
+          // Show what we have so far
+          const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          let fullText = `REQUEST FOR PROPOSAL\n${projectName || 'Project'}\nPrepared for: ${clientName || 'Organization'}\nDate: ${date}\n\n`;
+          for (const sec of allSections) {
+            fullText += `\n${'='.repeat(60)}\n${sec.section.toUpperCase()}\n${'='.repeat(60)}\n\n${sec.content}\n\n`;
+          }
+          setRfpResult({ sections: allSections, full_text: fullText, project_name: projectName, client_name: clientName, tone, source_names: sourceNames });
+          setStep(4);
+          toast(`LLM budget exceeded — showing ${allSections.length} completed sections. Go to Profile > Universal Key > Add Balance to top up.`, "error");
+        } else {
+          toast("LLM budget exceeded. Go to Profile > Universal Key > Add Balance to top up, then try again.", "error");
+          setStep(2);
+        }
+      } else {
+        toast(`RFP generation failed: ${e.message}. Please try again.`, "error");
+        setStep(2);
+      }
     }
   }, [templateSections, projectName, clientName, tone, additionalCtx, toast]);
 
