@@ -1664,19 +1664,36 @@ async def generate_rfp(req: RFPGenerateRequest):
     import json
     sources_cursor = db.sources.find(
         {"notebook_id": req.notebook_id, "status": "indexed"},
-        {"_id": 0, "title": 1, "content": 1}
+        {"_id": 0, "title": 1, "content": 1, "id": 1}
     )
     sources = await sources_cursor.to_list(50)
     
     if not sources:
         raise HTTPException(status_code=400, detail="No indexed sources found.")
     
-    combined = ""
-    source_names = []
-    for s in sources:
-        source_names.append(s['title'])
-        combined += f"\n\n[{s['title']}]:\n{s['content'][:2500]}"
-    combined = combined[:8000]
+    source_names = [s['title'] for s in sources]
+    
+    # Use RAG retrieval: get relevant chunks for the sections being generated
+    section_query = ' '.join(req.template_sections) + ' ' + (req.project_name or '') + ' ' + (req.additional_context or '')
+    relevant_chunks = await retrieve_relevant_chunks(section_query, req.notebook_id, top_k=20)
+    
+    if relevant_chunks and any(c['score'] > 0.05 for c in relevant_chunks):
+        # Build context from relevant chunks grouped by source
+        seen = set()
+        parts = []
+        for chunk in relevant_chunks:
+            src_title = chunk['source_title']
+            if src_title not in seen:
+                parts.append(f"\n[{src_title}]:")
+                seen.add(src_title)
+            parts.append(chunk['text'])
+        combined = '\n'.join(parts)[:12000]
+    else:
+        # Fallback: full source content
+        combined = ""
+        for s in sources:
+            combined += f"\n\n[{s['title']}]:\n{s.get('content', '')[:3000]}"
+        combined = combined[:12000]
     
     tone_map = {"Formal": "formal bureaucratic procurement", "Technical": "technical specifications-focused", "Executive": "executive strategic decision-maker", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
@@ -1698,20 +1715,28 @@ List at least 10 relevant terms based on the project domain and source content."
 - (efficiency, workflow, process improvements)
 ### Governance Objectives
 - (compliance, oversight, reporting)"""
-    section_instructions["Scope of Work"] = """Group into 3-4 workstreams with a table per workstream:
+    section_instructions["Scope of Work"] = """Group into clearly defined workstreams. For each workstream include activities and outputs in a table:
+### Workstream 1: [Name]
 | Activity | Description | Output |
 | --- | --- | --- |
-Include in-scope and out-of-scope statements."""
-    section_instructions["Technical Requirements"] = """Organize into categories with bullet requirements:
+Repeat for 3-5 workstreams. Include explicit in-scope and out-of-scope statements."""
+    section_instructions["Technical Requirements"] = """Organize into categories with structured requirements:
 ### Integration Requirements
+- (APIs, system interconnections, data flows)
 ### Data Requirements
+- (data models, migration, quality standards)
 ### Security Requirements
+- (authentication, authorization, encryption)
+### Workflow Requirements
+- (business process automation, approvals)
 ### Reporting & Analytics
-3-4 bullets per category. Keep concise."""
-    section_instructions["Deliverables & Acceptance Criteria"] = """Table format:
-| Deliverable | Description | Format | Acceptance Criteria |
-| --- | --- | --- | --- |
-Include 6-8 deliverables covering design, dev, testing, training, docs, go-live."""
+- (dashboards, KPIs, data visualization)
+### Architecture Principles
+- (scalability, availability, cloud/on-prem)"""
+    section_instructions["Deliverables & Acceptance Criteria"] = """Present all deliverables in a structured table:
+| Deliverable | Description | Format | Owner | Acceptance Criteria |
+| --- | --- | --- | --- | --- |
+Include at least 8-10 deliverables covering design, development, testing, training, documentation, and go-live. Each must have measurable acceptance criteria."""
     section_instructions["Timeline & Milestones"] = """Define a phased timeline:
 ### Phase 1: Initiation & Planning (Weeks 1-4)
 - Key milestones and governance gates
@@ -1820,14 +1845,22 @@ RULES:
 
 Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
 
-    response = await generate_with_ai(prompt, f"Enterprise RFP writer. {req.tone} tone.")
+    logger.info(f"RFP generate: sections={req.template_sections}, prompt_len={len(prompt)}, context_len={len(combined)}")
+    
+    try:
+        response = await generate_with_ai(prompt, f"Enterprise RFP writer. {req.tone} tone.")
+    except HTTPException as he:
+        logger.error(f"RFP generate AI error: {he.detail}")
+        raise HTTPException(status_code=he.status_code, detail=f"AI generation failed: {he.detail}")
     
     try:
         clean = response.strip()
         if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
         rfp_sections = json.loads(clean)
     except:
-        rfp_sections = [{"section": s, "content": f"Content for {s}."} for s in req.template_sections]
+        # Try to salvage content even if not valid JSON
+        logger.warning(f"RFP JSON parse failed, attempting salvage. Response length: {len(response)}")
+        rfp_sections = [{"section": s, "content": response if len(req.template_sections) == 1 else f"Content for {s}."} for s in req.template_sections]
     
     return {"sections": rfp_sections, "source_names": source_names}
 

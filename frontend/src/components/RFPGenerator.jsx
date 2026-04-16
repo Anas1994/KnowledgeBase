@@ -21,11 +21,21 @@ const SAMPLE_SECTIONS = [
 ];
 
 const PROGRESS_STEPS = [
-  "Reading template structure",
-  "Extracting knowledge base content",
-  "Matching sections to sources",
-  "Writing RFP sections",
-  "Applying tone and citations",
+  "Analyzing knowledge base",
+  "Writing Executive Summary",
+  "Building Background & Context",
+  "Defining Terms & Acronyms",
+  "Structuring Objectives",
+  "Mapping Scope of Work",
+  "Detailing Technical Requirements",
+  "Defining Deliverables",
+  "Planning Timeline & Milestones",
+  "Structuring Commercial Model",
+  "Building Evaluation Criteria",
+  "Writing Bidder Instructions",
+  "Defining Submission Requirements",
+  "Adding Legal & Compliance",
+  "Compiling Appendices",
   "Finalizing document"
 ];
 
@@ -240,8 +250,8 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
     setProgressIdx(0);
 
     try {
-      // Batch sections into groups of 2 to stay under gateway timeout
-      const batchSize = 2;
+      // Batch sections — 1 section per call for comprehensive generation
+      const batchSize = 1;
       const batches = [];
       for (let i = 0; i < templateSections.length; i += batchSize) {
         batches.push(templateSections.slice(i, i + batchSize));
