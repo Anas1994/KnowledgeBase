@@ -294,23 +294,32 @@ async def retrieve_relevant_chunks(query: str, notebook_id: str, source_ids: Lis
     return all_chunks[:top_k]
 
 async def generate_with_ai(prompt: str, system_message: str = "You are an expert research assistant.") -> str:
-    """Generate content using GPT-5.1 via Emergent"""
-    try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message=system_message
-        ).with_model("openai", "gpt-5.1")
-        
-        user_message = UserMessage(text=prompt)
-        response = await chat.send_message(user_message)
-        return response
-    except Exception as e:
-        error_str = str(e)
-        logger.error(f"AI generation error: {error_str}")
-        if "Budget has been exceeded" in error_str or "budget" in error_str.lower():
-            raise HTTPException(status_code=402, detail="LLM budget exceeded. Please go to Profile > Universal Key > Add Balance to top up.")
-        raise HTTPException(status_code=500, detail=f"AI generation failed: {error_str}")
+    """Generate content using LLM via Emergent — tries primary model, falls back to alternative"""
+    providers = [
+        ("gemini", "gemini-2.5-flash"),
+        ("openai", "gpt-5.1"),
+    ]
+    last_error = None
+    for provider, model in providers:
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=str(uuid.uuid4()),
+                system_message=system_message
+            ).with_model(provider, model)
+            
+            user_message = UserMessage(text=prompt)
+            response = await chat.send_message(user_message)
+            return response
+        except Exception as e:
+            error_str = str(e)
+            logger.warning(f"AI {provider}/{model} failed: {error_str[:100]}")
+            if "Budget has been exceeded" in error_str or "budget" in error_str.lower():
+                raise HTTPException(status_code=402, detail="LLM budget exceeded. Please go to Profile > Universal Key > Add Balance to top up.")
+            last_error = error_str
+    
+    logger.error(f"All AI providers failed. Last error: {last_error}")
+    raise HTTPException(status_code=500, detail=f"AI generation failed: {last_error}")
 
 async def generate_slide_image(slide_title: str, slide_content: str, layout_type: str, theme: str, image_keyword: str = "") -> Optional[str]:
     """Generate a professional, contextually relevant image for a slide using AI"""
