@@ -36,6 +36,7 @@ Build a healthcare research workspace with dual-theme UI, English/Arabic localiz
 - [x] Budget error handling with user-friendly messages
 - [x] RFP Generator: template upload, batched AI generation, DOCX/PDF exports with TOC
 - [x] RFP Generator v2: Enterprise-grade 15-section structure, section-specific structured prompts (tables, sub-headings, bullets), markdown content rendering in preview and DOCX export, 20K knowledge base context, healthcare context enforcement
+- [x] RFP Generator v3: PMO Director-level prompt overhaul — vendor neutrality enforcement (no specific vendor/tool/platform/cloud provider names), procurement-ready language ("Vendor shall...", "Bidder must..."), measurable acceptance criteria, scoring matrices, compliance checklists, structured workstream tables with Requirement IDs, multi-provider AI fallback (Gemini primary, OpenAI fallback)
 - [x] Rebranding: HealthOS → Knowledge Base, Health Intelligence Workspace → My Workspace
 
 ## Completed Fix Log

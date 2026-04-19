@@ -1712,121 +1712,200 @@ async def generate_rfp(req: RFPGenerateRequest):
     tone_map = {"Formal": "formal bureaucratic procurement", "Technical": "technical specifications-focused", "Executive": "executive strategic decision-maker", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
     
-    # Build section-specific generation instructions
+    # Build section-specific generation instructions — PMO Director / Procurement Expert level
     section_instructions = {}
-    section_instructions["Executive Summary"] = """Write a concise 1-page executive summary covering: project purpose, strategic alignment, expected outcomes, and call-to-action for vendors. Max 250 words. Decision-maker friendly."""
-    section_instructions["Background & Context"] = """Describe the organizational context, current challenges, existing systems landscape, and the strategic drivers behind this procurement. Reference the knowledge base content. Include organizational structure if available."""
-    section_instructions["Definitions & Acronyms"] = """Create a table of key terms and acronyms used in this RFP:
+    section_instructions["Executive Summary"] = """Concise, decision-maker friendly. Max 250 words. Must clearly state:
+- The problem/challenge driving this procurement
+- The objective (what the organization needs)
+- What the Vendor/Bidder is expected to deliver
+- Strategic alignment and expected outcomes
+DO NOT be verbose. Reduce to essential points only. Write as an issuing authority, NOT as a vendor."""
+
+    section_instructions["Background & Context"] = """High-level organizational context ONLY:
+- Current challenges and pain points (keep brief)
+- Existing systems landscape (names only, no architecture details)
+- Strategic drivers behind this procurement
+DO NOT include detailed risks (move to Appendix). DO NOT repeat objectives. DO NOT include internal-only references. Keep strictly as CONTEXT — not scope, not requirements."""
+
+    section_instructions["Definitions & Acronyms"] = """Create a table:
 | Term | Definition |
 | --- | --- |
-List at least 10 relevant terms based on the project domain and source content."""
-    section_instructions["Project Objectives"] = """Structure into 4 sub-categories with bullet points:
+List 10-15 terms. Include all acronyms used in the RFP. MUST be vendor-neutral — no specific product or platform names."""
+
+    section_instructions["Project Objectives"] = """Structure into 4 clear sub-categories. Each objective must be measurable and outcome-focused:
 ### Strategic Objectives
-- (alignment with organizational strategy)
+- (organizational strategy alignment, transformation goals)
 ### Technical Objectives
-- (systems, integrations, architecture goals)
+- (systems, integrations, architecture outcomes)
 ### Operational Objectives
-- (efficiency, workflow, process improvements)
+- (efficiency, workflow, process improvement targets)
 ### Governance Objectives
-- (compliance, oversight, reporting)"""
-    section_instructions["Scope of Work"] = """Group into clearly defined workstreams. For each workstream include activities and outputs in a table:
+- (compliance, oversight, reporting outcomes)
+DO NOT repeat Background content. Objectives = OUTCOMES ONLY."""
+
+    section_instructions["Scope of Work"] = """Structure each workstream as a table:
 ### Workstream 1: [Name]
-| Activity | Description | Output |
-| --- | --- | --- |
-Repeat for 3-5 workstreams. Include explicit in-scope and out-of-scope statements."""
-    section_instructions["Technical Requirements"] = """Organize into categories with structured requirements:
-### Integration Requirements
-- (APIs, system interconnections, data flows)
-### Data Requirements
-- (data models, migration, quality standards)
-### Security Requirements
-- (authentication, authorization, encryption)
-### Workflow Requirements
-- (business process automation, approvals)
-### Reporting & Analytics
-- (dashboards, KPIs, data visualization)
-### Architecture Principles
-- (scalability, availability, cloud/on-prem)"""
-    section_instructions["Deliverables & Acceptance Criteria"] = """Present all deliverables in a structured table:
-| Deliverable | Description | Format | Owner | Acceptance Criteria |
+| Requirement ID | Requirement | Description | Expected Output | Acceptance Criteria |
 | --- | --- | --- | --- | --- |
-Include at least 8-10 deliverables covering design, development, testing, training, documentation, and go-live. Each must have measurable acceptance criteria."""
-    section_instructions["Timeline & Milestones"] = """Define a phased timeline:
-### Phase 1: Initiation & Planning (Weeks 1-4)
-- Key milestones and governance gates
-### Phase 2: Design & Development (Weeks 5-16)
-- Key milestones
-### Phase 3: Testing & UAT (Weeks 17-22)
-- Key milestones
-### Phase 4: Go-Live & Transition (Weeks 23-26)
-- Key milestones
-Include dependencies between phases and governance approval gates."""
-    section_instructions["Commercial Model & Budget"] = """Define:
-### Pricing Model
-- Specify Fixed Price / Time & Materials / Hybrid expectations
-### Cost Breakdown Structure
-| Cost Category | Description | Pricing Type |
-| --- | --- | --- |
-Include categories: Professional Services, Software Licensing, Infrastructure, Training, Support & Maintenance, Project Management
-### Payment Schedule
-- Milestone-based payment structure tied to deliverables"""
-    section_instructions["Evaluation Criteria"] = """Create a weighted scoring table:
-| Criteria | Weight (%) | Sub-Criteria | Evaluation Method |
+Create 3-5 workstreams. Then add:
+### In-Scope
+- (explicit list)
+### Out-of-Scope
+- (explicit list)
+Requirements must be measurable, contractual, and have clear boundaries. Use "The Vendor shall..." language. NEVER reference a specific vendor, tool, or platform by name."""
+
+    section_instructions["Technical Requirements"] = """Split into 4 clear categories:
+### Functional Requirements
+| Req ID | Requirement | Priority | Description |
 | --- | --- | --- | --- |
-Include: Technical Approach (30-40%), Team & Experience (15-20%), Commercial (20-25%), Project Management (10-15%), Innovation (5-10%).
-State the minimum technical threshold score for qualification."""
-    section_instructions["Instructions to Bidders"] = """Include structured guidance:
-### Communication Protocol
-- Single point of contact, email format, response timelines
-### Clarification Process
-- Deadline for questions, method of submission, response distribution
-### Proposal Validity
-- Minimum validity period (e.g., 90 days)
-### Conflict of Interest
-- Declaration requirements and disqualification criteria"""
-    section_instructions["Submission Requirements"] = """Specify:
-### Proposal Structure
-- Technical Proposal (separate volume)
-- Financial Proposal (separate sealed volume)
-### Naming Conventions
-- File naming format requirements
-### Format Requirements
-- Page limits, font, margins, file types
-### Deadline
-- Exact submission date, time, timezone, and method"""
-    section_instructions["Legal Terms & Conditions"] = """Cover:
-### Liability & Indemnification
-- Limitation of liability, indemnification obligations
-### Confidentiality
-- NDA requirements, information handling
-### Intellectual Property
-- IP ownership of deliverables, pre-existing IP, licensing
-### Regulatory Compliance
-- Applicable laws, regulations, standards
-### Termination
-- Termination for convenience/cause, notice periods"""
-    section_instructions["Data Protection & Security Compliance"] = """Include:
-### Healthcare Data Standards
-- Applicable data protection regulations, patient data handling
-### Access Control
-- Role-based access, multi-factor authentication, least privilege
-### Audit & Logging
-- Audit trail requirements, log retention, monitoring
-### Data Residency
-- Data sovereignty requirements, hosting location
-### Incident Response
-- Breach notification timelines, response procedures"""
-    section_instructions["Appendices"] = """Reference the following appendix items:
-### Appendix A: System Integration List
-- List all systems requiring integration with brief descriptions
-### Appendix B: Data Model Templates
-- Reference to data schemas and exchange formats
-### Appendix C: Governance Framework
-- Oversight structure, steering committee, escalation paths
-### Appendix D: Risk Register Template
-| Risk | Likelihood | Impact | Mitigation | Owner |
+### Non-Functional Requirements
+- Performance SLAs (response times, uptime %)
+- Expected data volumes and number of concurrent users
+- Environment constraints (cloud/on-prem/hybrid — state preference, allow vendor proposal)
+### Integration Requirements
+- System interfaces (use neutral names, e.g., "Hospital Information System" not a product name)
+- API standards, data exchange formats
+### Data Requirements
+- Data models, migration scope, quality standards
+REMOVE any mention of specific tools/platforms. Use "The solution should support..." or "The Vendor must propose..." language."""
+
+    section_instructions["Deliverables & Acceptance Criteria"] = """Table format — use "Vendor shall deliver" language:
+| ID | Deliverable | Description | Format | Acceptance Criteria |
 | --- | --- | --- | --- | --- |
-Provide 5-8 sample risks relevant to the project."""
+Include 8-10 deliverables covering: Solution Design, Development, Integration, Testing, Training, Documentation, Go-Live, Warranty Support.
+Each acceptance criteria must be measurable: % accuracy thresholds, performance benchmarks, SLA-based validation, sign-off gates. NEVER assign ownership to a named vendor."""
+
+    section_instructions["Timeline & Milestones"] = """Phased approach:
+### Phase 1: Initiation & Planning
+- Duration, key milestones, governance gates
+### Phase 2: Design & Development
+- Duration, key milestones, dependencies
+### Phase 3: Testing & UAT
+- Duration, key milestones, sign-off criteria
+### Phase 4: Go-Live & Transition
+- Duration, key milestones, warranty period
+Use relative durations (Week 1-4) not hardcoded dates. Include governance approval gates between phases. State dependencies clearly."""
+
+    section_instructions["Commercial Model & Budget"] = """DO NOT prescribe a pricing model. Use:
+### Pricing Approach
+"The Vendor must propose a pricing model. Acceptable models include Fixed Price, Time & Materials, or Hybrid. The Vendor must justify the chosen model."
+### Cost Breakdown
+"The Vendor must provide a detailed cost breakdown including:"
+| Cost Category | Description |
+| --- | --- |
+Categories: Professional Services, Software Licensing, Infrastructure, Training, Support & Maintenance, Project Management, Travel & Expenses
+### Payment Schedule
+"Payment shall be milestone-based, tied to accepted deliverables. The Vendor must propose a payment schedule aligned to the project timeline."
+Allow vendor flexibility — do NOT dictate pricing."""
+
+    section_instructions["Evaluation Criteria"] = """Weighted scoring matrix:
+| Criteria | Weight (%) | Sub-Criteria | Scoring Scale | Evaluation Method |
+| --- | --- | --- | --- | --- |
+Include:
+- Technical Approach: 35%
+- Team Qualifications & Experience: 20%
+- Commercial Proposal: 25%
+- Project Management & Methodology: 15%
+- Innovation & Value-Add: 5%
+Scoring scale: 1 (Poor) to 5 (Exceptional) for each sub-criteria.
+State: "Minimum technical threshold of 70% required for financial evaluation."
+Ensure complete objectivity — no criteria should favor a specific vendor."""
+
+    section_instructions["Instructions to Bidders"] = """Complete with NO placeholders:
+### Communication Protocol
+- All communication via: procurement@moh.gov (To be confirmed by the issuing authority)
+- Single Point of Contact for queries
+- Response timeline: 3 business days for clarifications
+### Clarification Process
+- Questions deadline: 14 calendar days before submission
+- Method: Written queries via email only
+- Responses distributed to all registered bidders
+### Proposal Validity
+- Proposals must remain valid for minimum 90 calendar days from submission deadline
+### Conflict of Interest
+- Bidders must declare any conflicts of interest
+- Failure to disclose = grounds for disqualification
+### Compliance Checklist
+- Bidders must confirm compliance with all mandatory requirements using the provided checklist"""
+
+    section_instructions["Submission Requirements"] = """Complete and specific:
+### Proposal Structure
+- **Volume 1**: Technical Proposal (separate document)
+- **Volume 2**: Financial Proposal (separate sealed document)
+- **Volume 3**: Company Profile & References
+### Naming Conventions
+- Format: [CompanyName]_[Volume]_[ProjectName]_[Date].pdf
+### Format Requirements
+- PDF format, A4 page size
+- Font: Calibri or Arial, minimum 11pt
+- Technical Proposal: maximum 80 pages (excluding appendices)
+- Financial Proposal: no page limit
+### Submission Deadline
+- Date: To be confirmed by the issuing authority
+- Time: 14:00 (local time, GMT+3)
+- Method: Electronic submission via the designated procurement portal
+- Late submissions will NOT be accepted"""
+
+    section_instructions["Legal Terms & Conditions"] = """Vendor-neutral legal framework:
+### Liability & Indemnification
+- Limitation of liability provisions
+- Indemnification obligations of the Vendor
+### Confidentiality
+- All RFP information is confidential
+- NDA required prior to detailed briefings
+### Intellectual Property
+- All deliverables produced under the contract become property of the Client
+- Pre-existing IP remains with originating party, with perpetual license to Client
+### Regulatory Compliance
+- Compliance with applicable national regulations
+- Healthcare sector-specific regulations (NCA, NDMO, HIPAA-equivalent)
+### Termination
+- Termination for convenience: 30 days written notice
+- Termination for cause: 14 days cure period
+REMOVE any mention of specific tools, platforms, or vendor names."""
+
+    section_instructions["Data Protection & Security Compliance"] = """Standards-based, vendor-neutral:
+### Regulatory Compliance
+- National Cybersecurity Authority (NCA) standards
+- National Data Management Office (NDMO) regulations
+- Healthcare data protection regulations
+- ISO 27001 certification required or equivalent
+### Access Control
+- Role-based access control (RBAC) mandatory
+- Multi-factor authentication for all privileged access
+- Principle of least privilege
+### Audit & Logging
+- Complete audit trail for all data access and modifications
+- Minimum 7-year log retention for healthcare data
+- Real-time security monitoring and alerting
+### Data Residency
+- All data must be hosted within national borders (or as specified by Client)
+- Cloud providers must have local data center presence
+### Incident Response
+- Security breach notification within 24 hours
+- Documented incident response procedures required
+REMOVE all references to specific tools, platforms, or vendor solutions."""
+
+    section_instructions["Appendices"] = """Structured reference appendices:
+### Appendix A: System Integration Matrix
+| System | Description | Integration Type | Data Exchange Format | Priority |
+| --- | --- | --- | --- | --- |
+List all systems requiring integration from the knowledge base.
+### Appendix B: Data Model Reference
+- High-level entity descriptions and relationships
+- Data exchange format standards (HL7 FHIR, JSON, XML as applicable)
+### Appendix C: Governance Framework
+- Project Steering Committee structure
+- Escalation paths and decision authority
+- Change control process
+### Appendix D: Risk Register
+| Risk ID | Risk Description | Likelihood (1-5) | Impact (1-5) | Risk Score | Mitigation Strategy | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+Provide 6-8 project-specific risks.
+### Appendix E: Compliance Checklist
+| Requirement | Mandatory (Y/N) | Bidder Confirmation |
+| --- | --- | --- |
+List 10-15 mandatory compliance items."""
 
     # Build section-specific instructions for the batch
     batch_instructions = []
@@ -1836,8 +1915,9 @@ Provide 5-8 sample risks relevant to the project."""
     
     instructions_text = "\n\n".join(batch_instructions)
     
-    prompt = f"""You are an Enterprise RFP Architect. Generate procurement-ready content for these sections:
+    prompt = f"""You are a Senior PMO Director, Procurement Expert, and Healthcare Solution Architect producing a world-class, vendor-neutral RFP.
 
+Generate content for:
 {sections_list}
 
 PROJECT: {req.project_name or 'Project'}
@@ -1851,18 +1931,21 @@ KNOWLEDGE BASE:
 SECTION INSTRUCTIONS:
 {instructions_text}
 
-RULES:
-- Use markdown tables (| Col | Col |), ### sub-headings, - bullets, **bold** where instructed
-- No empty sections. No [Source:] citations. No paragraphs over 150 words without structure.
-- Ground content in source material. Use project/client names naturally.
-- If healthcare detected: include HIS, data governance, regulatory compliance.
+MANDATORY RULES:
+1. VENDOR NEUTRALITY: NEVER reference any specific vendor, product, tool, platform, or cloud provider by name (no AWS, Azure, GCP, Oracle, SAP, etc.). Use "Vendor", "Bidder", "Implementation Partner", "The solution should support...", "The Vendor must propose..."
+2. NO SOLUTION BIAS: Do not prescribe specific architecture, tools, or technologies. Let vendors propose.
+3. FORMATTING: Use markdown tables, ### sub-headings, - bullets, **bold**. No JSON blocks. No code formatting. Professional prose only.
+4. NO REDUNDANCY: Background = context only, Objectives = outcomes only, Scope = actionable requirements. Never repeat the same point across sections.
+5. NO PLACEHOLDERS: Do not use [Date], [Insert Number], [Email]. Either complete logically or write "To be confirmed by the issuing authority".
+6. MEASURABILITY: All requirements, deliverables, and criteria must be testable and measurable.
+7. LANGUAGE: Write as the issuing authority (the Client), NOT as a vendor. This is a document ISSUED to vendors.
 
 Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
 
     logger.info(f"RFP generate: sections={req.template_sections}, prompt_len={len(prompt)}, context_len={len(combined)}")
     
     try:
-        response = await generate_with_ai(prompt, f"Enterprise RFP writer. {req.tone} tone.")
+        response = await generate_with_ai(prompt, "Senior PMO Director and Procurement Expert. Produce vendor-neutral, procurement-ready, issuance-quality RFP content suitable for a Ministry of Health. Follow McKinsey/Deloitte quality standards.")
     except HTTPException as he:
         if he.status_code == 402:
             raise HTTPException(status_code=402, detail=he.detail)
@@ -1874,9 +1957,19 @@ Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
         if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
         rfp_sections = json.loads(clean)
     except:
-        # Try to salvage content even if not valid JSON
         logger.warning(f"RFP JSON parse failed, attempting salvage. Response length: {len(response)}")
         rfp_sections = [{"section": s, "content": response if len(req.template_sections) == 1 else f"Content for {s}."} for s in req.template_sections]
+    
+    # Merge duplicate sections (AI sometimes splits one section into multiple JSON objects)
+    merged = {}
+    for sec in rfp_sections:
+        name = sec.get('section', '')
+        content = sec.get('content', '')
+        if name in merged:
+            merged[name] += '\n\n' + content
+        else:
+            merged[name] = content
+    rfp_sections = [{"section": k, "content": v} for k, v in merged.items()]
     
     return {"sections": rfp_sections, "source_names": source_names}
 
