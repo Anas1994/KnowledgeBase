@@ -307,7 +307,8 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
               console.warn(`Section "${batches[bi][0]}" failed, retrying (${retries} left)...`);
               await new Promise(r => setTimeout(r, 4000));
             } else {
-              throw new Error(`Section "${batches[bi][0]}" failed: ${err.message}`);
+              // Skip this section instead of aborting — continue with remaining sections
+              console.error(`Section "${batches[bi][0]}" failed after 3 attempts, skipping.`);
             }
           }
         }
@@ -320,6 +321,12 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
       // Final progress
       setProgressIdx(PROGRESS_STEPS.length);
       await new Promise(r => setTimeout(r, 400));
+
+      if (allSections.length === 0) {
+        toast("RFP generation failed — no sections could be generated. Please try again.", "error");
+        setStep(2);
+        return;
+      }
 
       // Build full text
       const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -337,7 +344,12 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
         source_names: sourceNames
       });
       setStep(4);
-      toast("RFP generated successfully!");
+      const skipped = templateSections.length - allSections.length;
+      if (skipped > 0) {
+        toast(`RFP generated with ${allSections.length} sections (${skipped} skipped due to timeouts). You can regenerate missing sections.`, "warn");
+      } else {
+        toast("RFP generated successfully!");
+      }
     } catch (e) {
       console.error('RFP generation error:', e);
       if (e.message === 'BUDGET_EXCEEDED') {
