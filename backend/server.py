@@ -1958,11 +1958,58 @@ Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
     
     try:
         clean = (response or '').strip()
-        if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
+        # Strip markdown code blocks (```json ... ```, ```JSON ... ```, ``` ... ```)
+        if clean.startswith('```'):
+            # Remove first line (```json or ```) and last ``` 
+            first_newline = clean.find('\n')
+            if first_newline != -1:
+                clean = clean[first_newline + 1:]
+            last_fence = clean.rfind('```')
+            if last_fence != -1:
+                clean = clean[:last_fence]
+            clean = clean.strip()
+        
         rfp_sections = json.loads(clean)
-    except:
-        logger.warning(f"RFP JSON parse failed, attempting salvage. Response length: {len(response or '')}")
-        rfp_sections = [{"section": s, "content": (response or '') if len(req.template_sections) == 1 else f"Content for {s}."} for s in req.template_sections]
+        
+        # Ensure it's a list
+        if isinstance(rfp_sections, dict):
+            rfp_sections = [rfp_sections]
+        
+    except Exception as parse_err:
+        logger.warning(f"RFP JSON parse failed ({parse_err}), attempting salvage. Response length: {len(response or '')}")
+        raw = (response or '').strip()
+        
+        # Try harder: find JSON array in the response
+        salvaged = False
+        try:
+            start = raw.find('[')
+            end = raw.rfind(']')
+            if start != -1 and end != -1 and end > start:
+                candidate = raw[start:end + 1]
+                rfp_sections = json.loads(candidate)
+                salvaged = True
+                logger.info(f"RFP JSON salvaged by extracting array at [{start}:{end+1}]")
+        except:
+            pass
+        
+        if not salvaged:
+            # Last resort: strip any JSON wrapper and use raw content
+            content = raw
+            # Remove JSON artifacts if the content starts with them
+            for prefix in ['```json', '```', '[', '{']:
+                if content.startswith(prefix):
+                    content = content[len(prefix):]
+            for suffix in ['```', ']', '}']:
+                if content.endswith(suffix):
+                    content = content[:-len(suffix)]
+            # Remove "section": "..." and "content": "..." wrappers
+            import re
+            content = re.sub(r'"section"\s*:\s*"[^"]*"\s*,?\s*', '', content)
+            content = re.sub(r'"content"\s*:\s*"', '', content)
+            content = content.strip().rstrip('"').strip()
+            # Convert literal \n to actual newlines
+            content = content.replace('\\n', '\n')
+            rfp_sections = [{"section": s, "content": content} for s in req.template_sections]
     
     # Merge duplicate sections (AI sometimes splits one section into multiple JSON objects)
     merged = {}

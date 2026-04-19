@@ -58,7 +58,14 @@ const Icons = {
 // ── Rich content renderer for RFP sections (tables, bullets, sub-headings) ──
 function RfpContent({ text }) {
   if (!text) return null;
-  const clean = text.replace(/\[Source:[^\]]*\]/g, '').trim();
+  // Clean: strip citations, convert literal \n to real newlines, remove JSON artifacts
+  let clean = text.replace(/\[Source:[^\]]*\]/g, '').trim();
+  clean = clean.replace(/\\n/g, '\n');
+  // Remove any leading JSON artifacts (```json, [, {, "section":..., "content":...)
+  clean = clean.replace(/^```json\s*/i, '').replace(/```$/g, '');
+  clean = clean.replace(/^\[\s*\{\s*"section"\s*:\s*"[^"]*"\s*,\s*"content"\s*:\s*"/s, '');
+  clean = clean.replace(/"\s*\}\s*\]\s*$/s, '');
+  clean = clean.trim();
   const lines = clean.split('\n');
   const elements = [];
   let i = 0;
