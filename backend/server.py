@@ -310,6 +310,10 @@ async def generate_with_ai(prompt: str, system_message: str = "You are an expert
             
             user_message = UserMessage(text=prompt)
             response = await chat.send_message(user_message)
+            if response is None or response == '':
+                logger.warning(f"AI {provider}/{model} returned empty response")
+                last_error = "Empty response from AI"
+                continue
             return response
         except Exception as e:
             error_str = str(e)
@@ -1953,12 +1957,12 @@ Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
         raise HTTPException(status_code=he.status_code, detail=he.detail)
     
     try:
-        clean = response.strip()
+        clean = (response or '').strip()
         if clean.startswith('```'): clean = clean.split('\n', 1)[1].rsplit('```', 1)[0]
         rfp_sections = json.loads(clean)
     except:
-        logger.warning(f"RFP JSON parse failed, attempting salvage. Response length: {len(response)}")
-        rfp_sections = [{"section": s, "content": response if len(req.template_sections) == 1 else f"Content for {s}."} for s in req.template_sections]
+        logger.warning(f"RFP JSON parse failed, attempting salvage. Response length: {len(response or '')}")
+        rfp_sections = [{"section": s, "content": (response or '') if len(req.template_sections) == 1 else f"Content for {s}."} for s in req.template_sections]
     
     # Merge duplicate sections (AI sometimes splits one section into multiple JSON objects)
     merged = {}
