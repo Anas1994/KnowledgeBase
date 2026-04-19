@@ -267,7 +267,7 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
         const stepIdx = Math.min(bi * stepsPerBatch + 1, PROGRESS_STEPS.length - 1);
         setProgressIdx(stepIdx);
 
-        let retries = 2;
+        let retries = 3;
         let data = null;
         while (retries > 0) {
           try {
@@ -297,8 +297,8 @@ export default function RFPGenerator({ open, onClose, toast, sources, onSaveNote
             if (err.message === 'BUDGET_EXCEEDED') throw err;
             retries--;
             if (retries > 0) {
-              console.warn(`Batch ${bi + 1} failed, retrying... (${err.message})`);
-              await new Promise(r => setTimeout(r, 3000));
+              console.warn(`Section "${batches[bi][0]}" failed, retrying (${retries} left)...`);
+              await new Promise(r => setTimeout(r, 4000));
             } else {
               throw new Error(`Section "${batches[bi][0]}" failed: ${err.message}`);
             }

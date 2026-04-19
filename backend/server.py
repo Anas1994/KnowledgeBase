@@ -1675,10 +1675,16 @@ async def generate_rfp(req: RFPGenerateRequest):
     
     # Use RAG retrieval: get relevant chunks for the sections being generated
     section_query = ' '.join(req.template_sections) + ' ' + (req.project_name or '') + ' ' + (req.additional_context or '')
-    relevant_chunks = await retrieve_relevant_chunks(section_query, req.notebook_id, top_k=20)
+    relevant_chunks = await retrieve_relevant_chunks(section_query, req.notebook_id, top_k=15)
+    
+    # Adaptive context limit — tuned to keep AI response under 55s gateway timeout
+    heavy_sections = {'Scope of Work', 'Technical Requirements', 'Deliverables & Acceptance Criteria', 
+                      'Appendices', 'Legal Terms & Conditions', 'Data Protection & Security Compliance',
+                      'Commercial Model & Budget', 'Timeline & Milestones'}
+    is_heavy = any(s in heavy_sections for s in req.template_sections)
+    context_limit = 4000 if is_heavy else 7000
     
     if relevant_chunks and any(c['score'] > 0.05 for c in relevant_chunks):
-        # Build context from relevant chunks grouped by source
         seen = set()
         parts = []
         for chunk in relevant_chunks:
@@ -1687,13 +1693,12 @@ async def generate_rfp(req: RFPGenerateRequest):
                 parts.append(f"\n[{src_title}]:")
                 seen.add(src_title)
             parts.append(chunk['text'])
-        combined = '\n'.join(parts)[:12000]
+        combined = '\n'.join(parts)[:context_limit]
     else:
-        # Fallback: full source content
         combined = ""
         for s in sources:
-            combined += f"\n\n[{s['title']}]:\n{s.get('content', '')[:3000]}"
-        combined = combined[:12000]
+            combined += f"\n\n[{s['title']}]:\n{s.get('content', '')[:2000]}"
+        combined = combined[:context_limit]
     
     tone_map = {"Formal": "formal bureaucratic procurement", "Technical": "technical specifications-focused", "Executive": "executive strategic decision-maker", "Proposal-style": "persuasive benefits-focused"}
     sections_list = "\n".join([f"- {s}" for s in req.template_sections])
@@ -1850,8 +1855,10 @@ Return ONLY JSON array: [{{"section":"Title","content":"..."}}]"""
     try:
         response = await generate_with_ai(prompt, f"Enterprise RFP writer. {req.tone} tone.")
     except HTTPException as he:
+        if he.status_code == 402:
+            raise HTTPException(status_code=402, detail=he.detail)
         logger.error(f"RFP generate AI error: {he.detail}")
-        raise HTTPException(status_code=he.status_code, detail=f"AI generation failed: {he.detail}")
+        raise HTTPException(status_code=he.status_code, detail=he.detail)
     
     try:
         clean = response.strip()
